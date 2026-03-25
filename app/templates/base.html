@@ -9,11 +9,15 @@
 <body>
 <div class="app-shell">
   <aside class="primary-sidebar">
-    <div class="primary-logo">SM</div>
+    <div class="primary-brand">
+      <div class="primary-logo">SM</div>
+      <div class="brand-copy"><strong>SwitchManager</strong><span>Network Control</span></div>
+    </div>
     <nav class="primary-nav" aria-label="Globale Navigation">
       {% for item in primary_nav %}
       <a href="{{ item.url }}" class="primary-nav-item{% if item.active %} active{% endif %}" title="{{ item.label }}" aria-label="{{ item.label }}">
         <i data-lucide="{{ item.icon }}"></i>
+        <span>{{ item.label }}</span>
       </a>
       {% endfor %}
     </nav>
@@ -21,6 +25,7 @@
       {% for item in system_actions %}
       <a href="{{ item.url }}" class="primary-nav-item{% if item.active %} active{% endif %}" title="{{ item.label }}" aria-label="{{ item.label }}">
         <i data-lucide="{{ item.icon }}"></i>
+        <span>{{ item.label }}</span>
       </a>
       {% endfor %}
     </nav>
