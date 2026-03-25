@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, request, url_for
+from flask import Flask
 
 from config import Config
 from .extensions import csrf, db, login_manager
@@ -70,39 +70,11 @@ def _register_blueprints(app: Flask) -> None:
 
 def _register_context(app: Flask) -> None:
     from .models.models import Device
-    from .navigation import PAGE_TITLES, PRIMARY_NAV, SETTINGS_NAV, SYSTEM_ACTIONS, get_primary_active
     from .utils.device_context import get_selected_device
 
     @app.context_processor
     def inject_device_context():
-        endpoint = request.endpoint or ""
-        view_args = request.view_args or {}
-        secondary_visible = get_primary_active(endpoint) == "settings"
-        current_section = view_args.get("section_slug", "site")
-
-        def _build_nav(items):
-            links = []
-            for item in items:
-                args = item.view_args or {}
-                links.append({
-                    "label": item.label,
-                    "icon": item.icon,
-                    "group": item.group,
-                    "url": url_for(item.endpoint, **args),
-                    "active": endpoint == item.endpoint and (not args or all(view_args.get(k) == v for k, v in args.items())),
-                })
-            return links
-
-        page_title = PAGE_TITLES.get(endpoint, "SwitchManager")
-        if endpoint == "settings.section":
-            page_title = f"Settings · {current_section.replace('-', ' ').title()}"
-
         return {
             "all_devices": Device.query.order_by(Device.name.asc()).all(),
             "selected_device": get_selected_device(),
-            "primary_nav": _build_nav(PRIMARY_NAV),
-            "system_actions": _build_nav(SYSTEM_ACTIONS),
-            "settings_nav": _build_nav(SETTINGS_NAV),
-            "show_secondary_sidebar": secondary_visible,
-            "page_title": page_title,
         }

@@ -94,13 +94,3 @@ class NetworkProfile(db.Model):
     multicast_dns = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-
-
-class AppSetting(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    section = db.Column(db.String(120), nullable=False, index=True)
-    key = db.Column(db.String(120), nullable=False)
-    value = db.Column(db.Text, nullable=False, default="")
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
-
-    __table_args__ = (db.UniqueConstraint("section", "key", name="uq_setting_section_key"),)

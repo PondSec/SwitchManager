@@ -24,32 +24,7 @@ if (switcher) {
   });
 }
 
-const toggleButtons = document.querySelectorAll('[data-toggle]');
-const closeAllMenus = () => {
-  document.querySelectorAll('.dropdown, .tray').forEach((el) => el.classList.remove('open'));
-  document.querySelectorAll('[data-toggle]').forEach((btn) => btn.classList.remove('open'));
-};
-
-toggleButtons.forEach((button) => {
-  button.addEventListener('click', (event) => {
-    event.stopPropagation();
-    const targetId = button.dataset.toggle;
-    const panel = document.getElementById(targetId);
-    if (!panel) return;
-
-    const isOpen = panel.classList.contains('open');
-    closeAllMenus();
-    if (!isOpen) {
-      panel.classList.add('open');
-      button.classList.add('open');
-    }
-  });
-});
-
-document.addEventListener('click', () => closeAllMenus());
-document.querySelectorAll('.dropdown, .tray').forEach((panel) => panel.addEventListener('click', (event) => event.stopPropagation()));
-
-const globalSearch = document.getElementById('global-search');
+const globalSearch = document.querySelector('.top-search');
 if (globalSearch) {
   globalSearch.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {

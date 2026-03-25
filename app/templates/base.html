@@ -8,77 +8,50 @@
 </head>
 <body>
 <div class="app-shell">
-  <aside class="primary-sidebar">
-    <div class="primary-logo">SM</div>
-    <nav class="primary-nav" aria-label="Globale Navigation">
-      {% for item in primary_nav %}
-      <a href="{{ item.url }}" class="primary-nav-item{% if item.active %} active{% endif %}" title="{{ item.label }}" aria-label="{{ item.label }}">
-        <span>{{ item.icon }}</span>
-      </a>
-      {% endfor %}
-    </nav>
-    <nav class="primary-system" aria-label="System Aktionen">
-      {% for item in system_actions %}
-      <a href="{{ item.url }}" class="primary-nav-item{% if item.active %} active{% endif %}" title="{{ item.label }}" aria-label="{{ item.label }}">
-        <span>{{ item.icon }}</span>
-      </a>
-      {% endfor %}
-    </nav>
-  </aside>
-
-  {% if show_secondary_sidebar %}
-  <aside class="secondary-sidebar">
-    <header class="secondary-header">SETTINGS</header>
-    <div class="secondary-scroll" aria-label="Settings Navigation">
-      {% set current_group = namespace(name='') %}
-      {% for item in settings_nav %}
-        {% if item.group != current_group.name %}
-          {% set current_group.name = item.group %}
-          <p class="secondary-group">{{ item.group }}</p>
-        {% endif %}
-        <a class="secondary-item{% if item.active %} active{% endif %}" href="{{ item.url }}">{{ item.label }}</a>
-      {% endfor %}
-    </div>
-  </aside>
-  {% endif %}
-
-  <main class="main-stage">
-    <header class="topbar">
-      <div class="topbar-left">
-        <p class="muted top-context">Site · NOC-HQ</p>
-        <h1>{{ page_title }}</h1>
+  <aside class="sidebar">
+    <div class="brand-block">
+      <div class="brand-icon">SM</div>
+      <div>
+        <strong>SwitchManager</strong>
+        <p class="muted">Network Controller</p>
       </div>
-      <div class="topbar-right">
-        <button type="button" class="top-action" data-toggle="search-panel">⌕</button>
-        <button type="button" class="top-action" data-toggle="notifications-menu">🔔</button>
-        <button type="button" class="top-action" data-toggle="status-menu">●</button>
-        <div class="menu-wrap">
-          <button type="button" class="top-action user-action" data-toggle="user-menu">{{ current_user.username[:1]|upper if current_user.is_authenticated else 'U' }}</button>
-          <div class="dropdown" id="user-menu">
-            <a href="{{ url_for('auth.users') }}">Profil / User</a>
-            <a href="{{ url_for('settings.index') }}">Settings</a>
-            {% if current_user.is_authenticated %}
-            <a href="{{ url_for('auth.logout') }}">Logout</a>
-            {% endif %}
-          </div>
-        </div>
+    </div>
+    <nav class="nav-stack">
+      <a href="{{ url_for('dashboard.index') }}">Dashboard</a>
+      <a href="{{ url_for('devices.index') }}">Geräte</a>
+      <a href="{{ url_for('ports.index') }}">Port-Management</a>
+      <a href="{{ url_for('vlans.index') }}">VLANs</a>
+      <a href="{{ url_for('networks.index') }}">Port-Profile</a>
+      <a href="{{ url_for('audit.index') }}">Events / Logs</a>
+      <a href="{{ url_for('system.index') }}">Wartung</a>
+      <a href="{{ url_for('settings.index') }}">Einstellungen</a>
+    </nav>
+  </aside>
+
+  <main class="content">
+    <header class="topbar card">
+      <div class="crumbs">
+        <span class="muted">Site</span>
+        <strong>NOC-HQ</strong>
+        <span class="dot-sep">•</span>
+        <span class="muted">Aktives Gerät</span>
+        <strong>{{ selected_device.name if selected_device else 'Kein Gerät' }}</strong>
+      </div>
+      <div class="top-actions">
+        <input class="input top-search" placeholder="Gerät, IP, Port oder Event suchen..." />
+        <form class="device-switcher" method="post" action="#" onsubmit="return false;">
+          <select id="device-switch" class="input">
+            {% for d in all_devices %}
+              <option value="{{ d.id }}" {% if selected_device and selected_device.id == d.id %}selected{% endif %}>{{ d.name }} · {{ d.host }}</option>
+            {% endfor %}
+          </select>
+        </form>
+        {% if current_user.is_authenticated %}
+          <span class="badge">{{ current_user.username }} · {{ current_user.role }}</span>
+          <a class="btn btn-secondary" href="{{ url_for('auth.logout') }}">Logout</a>
+        {% endif %}
       </div>
     </header>
-
-    <section class="interactive-trays">
-      <div class="tray" id="search-panel">
-        <input id="global-search" class="input" placeholder="Device, Host, Port oder Event suchen...">
-      </div>
-      <div class="tray" id="notifications-menu">
-        <p>Letzte Aktionen</p>
-        <a href="{{ url_for('audit.index') }}">Audit Log öffnen</a>
-        <a href="{{ url_for('system.index') }}">System Wartung öffnen</a>
-      </div>
-      <div class="tray" id="status-menu">
-        <p>Controller Status: <strong>Online</strong></p>
-        <a href="{{ url_for('dashboard.index') }}">Dashboard</a>
-      </div>
-    </section>
 
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
@@ -90,9 +63,7 @@
       {% endif %}
     {% endwith %}
 
-    <section class="content-area">
-      {% block content %}{% endblock %}
-    </section>
+    {% block content %}{% endblock %}
   </main>
 </div>
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
