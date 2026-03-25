@@ -15,3 +15,10 @@ document.querySelectorAll('.tab').forEach((tab) => {
     if (panel) panel.classList.add('active');
   });
 });
+
+const switcher = document.getElementById('device-switch');
+if (switcher) {
+  switcher.addEventListener('change', () => {
+    window.location.href = `/devices/${switcher.value}/select`;
+  });
+}

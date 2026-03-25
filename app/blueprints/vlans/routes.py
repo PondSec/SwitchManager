@@ -5,6 +5,7 @@ from app.extensions import db
 from app.forms.network_forms import VLANForm
 from app.models.models import Device, VLAN
 from app.services.audit_service import write_audit
+from app.utils.device_context import get_selected_device
 from app.utils.driver_factory import get_driver
 
 bp = Blueprint("vlans", __name__, url_prefix="/vlans")
@@ -15,8 +16,7 @@ bp = Blueprint("vlans", __name__, url_prefix="/vlans")
 def index():
     form = VLANForm()
     preview = None
-    devices = Device.query.order_by(Device.name.asc()).all()
-    selected_device = devices[0] if devices else None
+    selected_device = get_selected_device()
 
     if form.validate_on_submit() and selected_device:
         driver = get_driver(selected_device)

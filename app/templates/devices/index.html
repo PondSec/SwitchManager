@@ -1,20 +1,21 @@
 {% extends 'base.html' %}
 {% block content %}
 <section class="card">
-  <div class="row"><h2>Geräteverwaltung</h2><a class="btn btn-primary" href="{{ url_for('devices.create') }}">Neues Gerät</a></div>
-  <table class="table">
-    <tr><th>Name</th><th>Host</th><th>SSH</th><th>Status</th><th>Aktionen</th></tr>
+  <div class="row"><h2>Multi-Switch Controller</h2><a class="btn btn-primary" href="{{ url_for('devices.create') }}">Switch hinzufügen</a></div>
+  <p class="muted">Füge beliebig viele Managed Switches hinzu und wechsle oben im Header oder pro Karte zwischen ihnen.</p>
+  <div class="device-wall">
     {% for d in devices %}
-      <tr>
-        <td>{{ d.name }}</td><td>{{ d.host }}</td><td>{{ d.username }}@{{ d.ssh_port }}</td>
-        <td><span class="badge {{ d.status }}">{{ d.status }}</span></td>
-        <td class="row">
+      <article class="device-tile card {% if selected_device and selected_device.id == d.id %}selected{% endif %}">
+        <div class="row"><h3>{{ d.name }}</h3><span class="badge {{ d.status }}">{{ d.status }}</span></div>
+        <p class="muted">{{ d.username }}@{{ d.host }}:{{ d.ssh_port }}</p>
+        <div class="row">
+          <a class="btn btn-secondary" href="{{ url_for('devices.select', device_id=d.id) }}">Aktiv setzen</a>
           <form method="post" action="{{ url_for('devices.test_connection', device_id=d.id) }}">{{ csrf_token() }}<button class="btn btn-secondary">Test</button></form>
           <a class="btn btn-secondary" href="{{ url_for('devices.edit', device_id=d.id) }}">Bearbeiten</a>
           <form method="post" action="{{ url_for('devices.delete', device_id=d.id) }}" data-confirm="Gerät löschen?">{{ csrf_token() }}<button class="btn btn-danger">Löschen</button></form>
-        </td>
-      </tr>
+        </div>
+      </article>
     {% endfor %}
-  </table>
+  </div>
 </section>
 {% endblock %}

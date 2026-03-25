@@ -8,8 +8,12 @@
 </head>
 <body>
 <div class="layout">
+  <aside class="icon-rail">
+    <div class="rail-logo">◉</div>
+    <span>◌</span><span>⌁</span><span>◍</span><span>▥</span><span>⚙</span>
+  </aside>
   <aside class="sidebar">
-    <div class="brand">SwitchManager</div>
+    <div class="brand">Network Controller</div>
     <nav>
       <a href="{{ url_for('dashboard.index') }}">Dashboard</a>
       <a href="{{ url_for('devices.index') }}">Geräte</a>
@@ -25,10 +29,17 @@
   <main class="main">
     <header class="topbar card">
       <div>
-        <strong>Aktiver Controller</strong>
-        <span class="muted">lokal / self-hosted</span>
+        <strong>Aktives Gerät</strong>
+        <span class="muted">{{ selected_device.name if selected_device else 'Kein Gerät' }}</span>
       </div>
       <div class="top-actions">
+        <form method="post" action="{{ url_for('devices.select', device_id=selected_device.id if selected_device else 0) }}" class="device-switcher" onsubmit="return false;">
+          <select id="device-switch" class="input">
+            {% for d in all_devices %}
+              <option value="{{ d.id }}" {% if selected_device and selected_device.id == d.id %}selected{% endif %}>{{ d.name }} ({{ d.host }})</option>
+            {% endfor %}
+          </select>
+        </form>
         {% if current_user.is_authenticated %}
           <span class="badge">{{ current_user.username }} ({{ current_user.role }})</span>
           <a class="btn btn-secondary" href="{{ url_for('auth.logout') }}">Logout</a>

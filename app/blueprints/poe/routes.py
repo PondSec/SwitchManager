@@ -4,6 +4,7 @@ from flask_login import current_user, login_required
 from app.forms.network_forms import PoEForm
 from app.models.models import Device, Port
 from app.services.audit_service import write_audit
+from app.utils.device_context import get_selected_device
 from app.utils.driver_factory import get_driver
 
 bp = Blueprint("poe", __name__, url_prefix="/poe")
@@ -14,7 +15,7 @@ bp = Blueprint("poe", __name__, url_prefix="/poe")
 def index():
     form = PoEForm()
     preview = None
-    device = Device.query.first()
+    device = get_selected_device()
     ports = Port.query.filter_by(device_id=device.id).order_by(Port.port_number.asc()).all() if device else []
     if device and form.validate_on_submit():
         driver = get_driver(device)

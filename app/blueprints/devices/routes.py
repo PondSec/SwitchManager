@@ -5,6 +5,7 @@ from app.extensions import db
 from app.forms.device_forms import DeviceForm
 from app.models.models import Device
 from app.services.audit_service import write_audit
+from app.utils.device_context import set_selected_device
 from app.utils.driver_factory import get_driver
 
 bp = Blueprint("devices", __name__, url_prefix="/devices")
@@ -83,3 +84,12 @@ def test_connection(device_id: int):
     finally:
         driver.close()
     return redirect(request.referrer or url_for("devices.index"))
+
+
+@bp.route("/<int:device_id>/select", methods=["GET", "POST"])
+@login_required
+def select(device_id: int):
+    device = Device.query.get_or_404(device_id)
+    set_selected_device(device.id)
+    flash(f"Aktives Gerät: {device.name}", "success")
+    return redirect(request.referrer or url_for("dashboard.index"))

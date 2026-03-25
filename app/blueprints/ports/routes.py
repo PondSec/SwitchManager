@@ -6,6 +6,7 @@ from app.forms.network_forms import BulkPortForm, PortConfigForm
 from app.models.models import Device, Port
 from app.services.audit_service import write_audit
 from app.services.validation import validate_port_list
+from app.utils.device_context import get_selected_device
 from app.utils.driver_factory import get_driver
 
 bp = Blueprint("ports", __name__, url_prefix="/ports")
@@ -17,7 +18,7 @@ def index():
     form = PortConfigForm(prefix="single")
     bulk_form = BulkPortForm(prefix="bulk")
     preview = None
-    device = Device.query.first()
+    device = get_selected_device()
     ports = Port.query.filter_by(device_id=device.id).order_by(Port.port_number.asc()).all() if device else []
 
     if device and form.submit.data and form.validate_on_submit():
@@ -70,7 +71,7 @@ def index():
 @bp.route("/refresh")
 @login_required
 def refresh():
-    device = Device.query.first()
+    device = get_selected_device()
     ports = Port.query.filter_by(device_id=device.id).order_by(Port.port_number.asc()).all() if device else []
     return render_template("partials/port_table.html", ports=ports)
 

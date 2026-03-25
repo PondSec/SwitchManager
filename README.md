@@ -12,6 +12,7 @@ Professionelle, mehrseitige Flask-Webanwendung für self-hosted Switch-Managemen
 - Erweiterte Netzwerk-Profile (DHCP, DNS, IGMP, Guarding, mDNS, UPnP) mit komplexer Admin-UI und Apply/Dry-Run
 - Audit-Logging in DB + Log-Datei
 - Dashboard, Geräte, VLAN, Ports (inkl. 24-Port Frontpanel), PoE, System, Audit, Einstellungen
+- Multi-Switch-Fähigkeit: Geräte hinzufügen, testen und global als aktives Ziel umschalten
 - Health-Endpoint `/health/`
 
 ## Projektstruktur

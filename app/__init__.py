@@ -70,7 +70,11 @@ def _register_blueprints(app: Flask) -> None:
 
 def _register_context(app: Flask) -> None:
     from .models.models import Device
+    from .utils.device_context import get_selected_device
 
     @app.context_processor
     def inject_device_context():
-        return {"all_devices": Device.query.order_by(Device.name.asc()).all()}
+        return {
+            "all_devices": Device.query.order_by(Device.name.asc()).all(),
+            "selected_device": get_selected_device(),
+        }

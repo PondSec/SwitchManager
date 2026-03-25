@@ -2,17 +2,29 @@
 {% block title %}Dashboard{% endblock %}
 {% block content %}
 <section class="card-grid">
-  <article class="card"><h3>Geräte</h3><p class="big">{{ stats.devices }}</p></article>
+  <article class="card"><h3>Geräte Gesamt</h3><p class="big">{{ stats.devices }}</p></article>
   <article class="card"><h3>Online</h3><p class="big status-online">{{ stats.online }}</p></article>
   <article class="card"><h3>VLANs</h3><p class="big">{{ stats.vlans }}</p></article>
   <article class="card"><h3>Änderungen</h3><p class="big">{{ stats.changes }}</p></article>
 </section>
-<section class="card">
-  <h2>Geräteübersicht</h2>
-  <table class="table"><tr><th>Name</th><th>Host</th><th>Status</th><th>Firmware</th></tr>
-  {% for d in devices %}<tr><td>{{ d.name }}</td><td>{{ d.host }}</td><td><span class="badge {{ d.status }}">{{ d.status }}</span></td><td>{{ d.firmware }}</td></tr>{% endfor %}
-  </table>
+
+<section class="device-wall">
+  {% for d in devices %}
+  <article class="device-tile card {% if selected_device and selected_device.id == d.id %}selected{% endif %}">
+    <div class="row"><h3>{{ d.name }}</h3><span class="badge {{ d.status }}">{{ d.status }}</span></div>
+    <p class="muted">{{ d.model }} · {{ d.host }}</p>
+    <div class="mini-ports">
+      {% for n in range(1,25) %}<span class="dot {{ 'up' if n % 3 == 0 else 'down' }}"></span>{% endfor %}
+    </div>
+    <div class="row">
+      <form method="post" action="{{ url_for('devices.select', device_id=d.id) }}">{{ csrf_token() }}<button class="btn btn-secondary">Aktivieren</button></form>
+      <form method="post" action="{{ url_for('devices.test_connection', device_id=d.id) }}">{{ csrf_token() }}<button class="btn btn-secondary">Reconnect</button></form>
+      <a class="btn btn-primary" href="{{ url_for('ports.index') }}">Verwalten</a>
+    </div>
+  </article>
+  {% endfor %}
 </section>
+
 <section class="card">
   <h2>Letzte Änderungen</h2>
   <ul>{% for item in recent %}<li>{{ item.created_at }} · {{ item.username }} · {{ item.action }} · {{ item.result }}</li>{% endfor %}</ul>

@@ -6,6 +6,7 @@ from app.forms.network_profile_forms import NetworkProfileForm
 from app.models.models import Device, NetworkProfile
 from app.services.audit_service import write_audit
 from app.services.command_builder import CommandAction, CommandBuilder
+from app.utils.device_context import get_selected_device
 from app.utils.driver_factory import get_driver
 
 bp = Blueprint("networks", __name__, url_prefix="/networks")
@@ -54,7 +55,7 @@ def edit(profile_id: int):
 @login_required
 def apply(profile_id: int):
     profile = NetworkProfile.query.get_or_404(profile_id)
-    device = Device.query.first()
+    device = get_selected_device()
     dry_run = request.form.get("dry_run", "1") == "1"
     commands = CommandBuilder.build(CommandAction("apply_network_profile", _profile_to_payload(profile)))
 
