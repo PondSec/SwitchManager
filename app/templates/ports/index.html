@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="card two-col">
+  <div>
+    <h2>Port-Konfiguration</h2>
+    <div class="tabs"><button class="tab active" data-tab="single">Einzeln</button><button class="tab" data-tab="bulk">Bulk</button></div>
+    <div class="tab-content active" id="single">
+      <form method="post" class="grid-form">
+        {{ form.hidden_tag() }}
+        <label>{{ form.port_number.label }}{{ form.port_number(class_='input') }}</label>
+        <label>{{ form.vlan_id.label }}{{ form.vlan_id(class_='input') }}</label>
+        <label>{{ form.vlan_mode.label }}{{ form.vlan_mode(class_='input') }}</label>
+        <label>{{ form.alias.label }}{{ form.alias(class_='input') }}</label>
+        <label class="toggle-line">{{ form.admin_enabled() }} <span>Admin Aktiv</span></label>
+        <label class="toggle-line">{{ form.dry_run() }} <span>Dry Run</span></label>
+        {{ form.submit(class_='btn btn-primary') }}
+      </form>
+    </div>
+    <div class="tab-content" id="bulk">
+      <form method="post" class="grid-form">
+        {{ bulk_form.hidden_tag() }}
+        <label>{{ bulk_form.ports.label }}{{ bulk_form.ports(class_='input') }}</label>
+        <label class="toggle-line">{{ bulk_form.admin_enabled() }} <span>Admin Aktiv</span></label>
+        {{ bulk_form.submit(class_='btn btn-secondary') }}
+      </form>
+    </div>
+    {% if preview %}<pre class="code-block">{{ preview.commands|join('\n') }}</pre>{% endif %}
+  </div>
+  <div>
+    <h2>Frontpanel (24 Ports)</h2>
+    <div class="frontpanel">
+      {% for port in ports %}
+        <button class="port {% if port.link_state == 'up' %}up{% else %}down{% endif %}" data-port-id="{{ port.id }}">{{ port.port_number }}</button>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+<section class="card" id="port-table-wrapper">{% include 'partials/port_table.html' %}</section>
+<div id="modal" class="modal hidden"><div class="modal-content" id="modal-content"></div></div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/ports.js') }}"></script>{% endblock %}

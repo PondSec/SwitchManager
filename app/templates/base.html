@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}SwitchManager{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+<div class="layout">
+  <aside class="icon-rail">
+    <div class="rail-logo">◉</div>
+    <span>◌</span><span>⌁</span><span>◍</span><span>▥</span><span>⚙</span>
+  </aside>
+  <aside class="sidebar">
+    <div class="brand">Network Controller</div>
+    <nav>
+      <a href="{{ url_for('dashboard.index') }}">Dashboard</a>
+      <a href="{{ url_for('devices.index') }}">Geräte</a>
+      <a href="{{ url_for('networks.index') }}">Netzwerk-Profile</a>
+      <a href="{{ url_for('vlans.index') }}">VLANs</a>
+      <a href="{{ url_for('ports.index') }}">Ports</a>
+      <a href="{{ url_for('poe.index') }}">PoE</a>
+      <a href="{{ url_for('system.index') }}">System</a>
+      <a href="{{ url_for('audit.index') }}">Audit</a>
+      <a href="{{ url_for('settings.index') }}">Einstellungen</a>
+    </nav>
+  </aside>
+  <main class="main">
+    <header class="topbar card">
+      <div>
+        <strong>Aktives Gerät</strong>
+        <span class="muted">{{ selected_device.name if selected_device else 'Kein Gerät' }}</span>
+      </div>
+      <div class="top-actions">
+        <form method="post" action="{{ url_for('devices.select', device_id=selected_device.id if selected_device else 0) }}" class="device-switcher" onsubmit="return false;">
+          <select id="device-switch" class="input">
+            {% for d in all_devices %}
+              <option value="{{ d.id }}" {% if selected_device and selected_device.id == d.id %}selected{% endif %}>{{ d.name }} ({{ d.host }})</option>
+            {% endfor %}
+          </select>
+        </form>
+        {% if current_user.is_authenticated %}
+          <span class="badge">{{ current_user.username }} ({{ current_user.role }})</span>
+          <a class="btn btn-secondary" href="{{ url_for('auth.logout') }}">Logout</a>
+        {% endif %}
+      </div>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <section class="toasts">
+        {% for category, message in messages %}
+          <div class="toast {{ category }}">{{ message }}</div>
+        {% endfor %}
+      </section>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

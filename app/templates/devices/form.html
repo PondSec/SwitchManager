@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="card">
+  <h2>{{ title }}</h2>
+  <form method="post" class="grid-form">
+    {{ form.hidden_tag() }}
+    <label>{{ form.name.label }}{{ form.name(class_='input') }}</label>
+    <label>{{ form.host.label }}{{ form.host(class_='input') }}</label>
+    <label>{{ form.ssh_port.label }}{{ form.ssh_port(class_='input') }}</label>
+    <label>{{ form.username.label }}{{ form.username(class_='input') }}</label>
+    <label>{{ form.password.label }}{{ form.password(class_='input') }}</label>
+    <label>{{ form.key_path.label }}{{ form.key_path(class_='input') }}</label>
+    <label>{{ form.driver_type.label }}{{ form.driver_type(class_='input') }}</label>
+    {{ form.submit(class_='btn btn-primary') }}
+  </form>
+</section>
+{% endblock %}
