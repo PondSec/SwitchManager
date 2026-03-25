@@ -65,7 +65,7 @@ def create():
             ssh_port=form.ssh_port.data,
             username=form.username.data,
             password=form.password.data,
-            key_path=form.key_path.data,
+            key_path=(form.key_path.data or None),
             driver_type=form.driver_type.data,
             model=form.model.data or "Unbekannt",
         )
@@ -216,6 +216,7 @@ def edit(device_id: int):
     form = DeviceForm(obj=device)
     if form.validate_on_submit():
         form.populate_obj(device)
+        device.key_path = (device.key_path or "").strip() or None
         ensure_device_inventory(device, form.inventory_port_count.data)
         db.session.commit()
         write_audit(current_user.username, "device_edit", device.name, "Gerät bearbeitet", "success")

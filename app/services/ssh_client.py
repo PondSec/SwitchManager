@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import socket
 import time
 
@@ -12,6 +13,13 @@ from app.models.models import AppSetting
 
 class SSHExecutionError(RuntimeError):
     pass
+
+
+def _normalize_key_path(raw_path: str | None) -> str | None:
+    if not raw_path:
+        return None
+    normalized = os.path.expandvars(os.path.expanduser(str(raw_path).strip()))
+    return normalized or None
 
 
 def _resolve_host_key_policy() -> str:
@@ -46,13 +54,17 @@ class SSHClientService:
         else:
             self.client.set_missing_host_key_policy(paramiko.RejectPolicy())
 
+        key_filename = _normalize_key_path(self.key_path)
+        if key_filename and not os.path.isfile(key_filename):
+            raise SSHExecutionError(f"SSH-Key Pfad nicht gefunden: {key_filename}")
+
         try:
             self.client.connect(
                 self.host,
                 port=self.port,
                 username=self.username,
                 password=self.password,
-                key_filename=self.key_path,
+                key_filename=key_filename,
                 timeout=current_app.config.get("SSH_CONNECT_TIMEOUT", 8),
                 look_for_keys=False,
             )
