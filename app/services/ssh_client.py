@@ -5,10 +5,26 @@ import time
 
 import paramiko
 from flask import current_app
+from sqlalchemy.exc import SQLAlchemyError
+
+from app.models.models import AppSetting
 
 
 class SSHExecutionError(RuntimeError):
     pass
+
+
+def _resolve_host_key_policy() -> str:
+    policy = str(current_app.config.get("SSH_HOST_KEY_POLICY", "reject")).strip().lower()
+    try:
+        row = AppSetting.query.filter_by(section="controller", key="ssh_host_key_policy").first()
+        if row and row.value:
+            candidate = row.value.strip().lower()
+            if candidate in {"reject", "warning", "auto-add"}:
+                return candidate
+    except SQLAlchemyError:
+        pass
+    return policy if policy in {"reject", "warning", "auto-add"} else "reject"
 
 
 class SSHClientService:
@@ -22,7 +38,7 @@ class SSHClientService:
 
     def connect(self) -> None:
         self.client = paramiko.SSHClient()
-        policy = current_app.config.get("SSH_HOST_KEY_POLICY", "reject")
+        policy = _resolve_host_key_policy()
         if policy == "auto-add":
             self.client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         elif policy == "warning":

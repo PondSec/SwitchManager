@@ -105,6 +105,16 @@ SETTINGS_SECTIONS = {
         "fields": [
             {"key": "telemetry_endpoint", "label": "Telemetry Endpoint", "type": "text", "placeholder": "https://telemetry.local"},
             {"key": "session_ttl", "label": "Session TTL (min)", "type": "text", "placeholder": "30"},
+            {
+                "key": "ssh_host_key_policy",
+                "label": "SSH Host-Key Policy",
+                "type": "select",
+                "options": [
+                    {"value": "reject", "label": "reject (sicher)"},
+                    {"value": "warning", "label": "warning"},
+                    {"value": "auto-add", "label": "auto-add (einfach)"},
+                ],
+            },
             {"key": "debug_mode", "label": "Debug Mode", "type": "checkbox"},
         ],
     },
@@ -171,6 +181,9 @@ def section(section_slug: str):
         return redirect(url_for("settings.index"))
 
     settings_map = _load_section_values(section_slug)
+
+    if section_slug == "controller":
+        settings_map.setdefault("ssh_host_key_policy", "reject")
 
     if request.method == "POST":
         for field in section_meta["fields"]:
