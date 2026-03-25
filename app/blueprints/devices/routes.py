@@ -5,6 +5,7 @@ from app.extensions import db
 from app.forms.device_forms import DeviceForm
 from app.models.models import AuditLog, Device, NetworkProfile, Port, VLAN
 from app.services.audit_service import write_audit
+from app.services.device_inventory import apply_interface_snapshot, ensure_device_inventory
 from app.utils.device_context import set_selected_device
 from app.utils.driver_factory import get_driver
 
@@ -56,9 +57,11 @@ def create():
             password=form.password.data,
             key_path=form.key_path.data,
             driver_type=form.driver_type.data,
+            model=form.model.data or "Unbekannt",
         )
         db.session.add(device)
         db.session.commit()
+        ensure_device_inventory(device, form.inventory_port_count.data)
         write_audit(current_user.username, "device_create", device.name, f"Device {device.host} erstellt", "success")
         flash("Gerät gespeichert.", "success")
         return redirect(url_for("devices.detail", device_id=device.id))
@@ -71,6 +74,7 @@ def detail(device_id: int):
     device = Device.query.get_or_404(device_id)
     set_selected_device(device.id)
 
+    ensure_device_inventory(device)
     ports = Port.query.filter_by(device_id=device.id).order_by(Port.port_number.asc()).all()
     vlans = VLAN.query.filter_by(device_id=device.id).order_by(VLAN.vlan_id.asc()).all()
     profiles = NetworkProfile.query.order_by(NetworkProfile.name.asc()).all()
@@ -127,10 +131,20 @@ def action(device_id: int, action: str):
         driver = get_driver(device)
         try:
             driver.connect()
+            synced_interfaces = 0
+            try:
+                interfaces = driver.get_interfaces()
+                synced_interfaces = apply_interface_snapshot(device, interfaces)
+            except Exception:  # noqa: BLE001
+                synced_interfaces = 0
+
+            created_ports, total_ports = ensure_device_inventory(device)
             device.status = "online"
             db.session.commit()
-            write_audit(current_user.username, "device_sync", device.name, "Synchronisierung erfolgreich", "success")
-            flash("Synchronisierung erfolgreich.", "success")
+
+            details = f"Sync ok: interfaces={synced_interfaces}, created_ports={created_ports}, total_ports={total_ports}"
+            write_audit(current_user.username, "device_sync", device.name, details, "success")
+            flash(f"Synchronisierung erfolgreich ({total_ports} Ports verfügbar).", "success")
         except Exception as exc:  # noqa: BLE001
             device.status = "offline"
             db.session.commit()
@@ -158,6 +172,7 @@ def edit(device_id: int):
     form = DeviceForm(obj=device)
     if form.validate_on_submit():
         form.populate_obj(device)
+        ensure_device_inventory(device, form.inventory_port_count.data)
         db.session.commit()
         write_audit(current_user.username, "device_edit", device.name, "Gerät bearbeitet", "success")
         flash("Gerät aktualisiert.", "success")
