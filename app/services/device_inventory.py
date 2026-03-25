@@ -25,12 +25,9 @@ KNOWN_PROFILES = [
 ]
 
 
-_PORT_ROW_RE = re.compile(
-    r"^(?:\s*(?:port|ethernet)?\s*)?(?P<port>\d{1,3}|eth\d{1,2})\s+"
-    r"(?P<state>up|down|disabled|enable|disable|connected|notconnect|not-connected|linkup|linkdown)\b",
-    flags=re.IGNORECASE,
-)
-
+_PORT_PREFIX_RE = re.compile(r"^\s*(?P<port>\d{1,3}|eth\d{1,2}|ge\d{1,2}|gi\d{1,2})\b", flags=re.IGNORECASE)
+_STATE_RE = re.compile(r"\b(up|down|disabled|enable|disable|connected|notconnect|not-connected|linkup|linkdown)\b", flags=re.IGNORECASE)
+_SPEED_RE = re.compile(r"\b(auto|\d+(?:\.\d+)?\s?(?:g|gbps|m|mbps|k|kbps))\b", flags=re.IGNORECASE)
 
 MODEL_PORT_HINTS = {
     "-8": 8,
@@ -84,42 +81,83 @@ def ensure_device_inventory(device: Device, port_count: int | None = None) -> tu
     return created, total
 
 
+def _parse_port_number(token: str) -> int | None:
+    normalized = token.lower()
+    if normalized.startswith("eth"):
+        return int(normalized.removeprefix("eth")) + 1
+    if normalized.startswith("ge") or normalized.startswith("gi"):
+        return int(re.sub(r"[^0-9]", "", normalized) or "0")
+    if normalized.isdigit():
+        return int(normalized)
+    return None
+
+
+def _extract_state(line: str) -> tuple[str, bool]:
+    lowered = line.lower().replace("-", "")
+    state_match = _STATE_RE.search(lowered)
+    state_token = state_match.group(1).lower().replace("-", "") if state_match else ""
+
+    if state_token in {"up", "connected", "enable", "linkup"}:
+        return "up", True
+    if state_token in {"down", "notconnect", "linkdown"}:
+        return "down", True
+    if "disabled" in lowered or " disable" in lowered:
+        return "down", False
+    return "down", True
+
+
+def _extract_speed_duplex(line: str) -> tuple[str | None, str | None]:
+    lower = line.lower()
+    speed_match = _SPEED_RE.search(lower)
+    speed = speed_match.group(1).replace(" ", "") if speed_match else None
+    if speed and speed in {"g", "m", "k"}:
+        speed = None
+
+    duplex = None
+    if "full" in lower:
+        duplex = "full"
+    elif "half" in lower:
+        duplex = "half"
+    return speed, duplex
+
+
 def parse_interface_rows(raw_output: str | list[dict]) -> list[dict]:
     if isinstance(raw_output, list):
         lines = []
         for item in raw_output:
-            line = str(item.get("raw", ""))
-            lines.extend(line.splitlines())
+            if "port_number" in item:
+                lines.append(str(item))
+            lines.extend(str(item.get("raw", "")).splitlines())
     else:
         lines = str(raw_output or "").splitlines()
 
     parsed: list[dict] = []
+    seen: set[int] = set()
+
     for line in lines:
         cleaned = line.strip()
         if not cleaned:
             continue
-        match = _PORT_ROW_RE.match(cleaned)
+
+        match = _PORT_PREFIX_RE.match(cleaned)
         if not match:
             continue
 
-        token = match.group("port").lower()
-        if token.startswith("eth"):
-            port_number = int(token.removeprefix("eth")) + 1
-        else:
-            port_number = int(token)
+        port_number = _parse_port_number(match.group("port"))
+        if not port_number or port_number in seen:
+            continue
 
-        state_token = match.group("state").lower().replace("-", "")
-        if state_token in {"up", "connected", "enable", "linkup"}:
-            link_state = "up"
-            admin_enabled = True
-        elif state_token in {"down", "notconnect", "linkdown"}:
-            link_state = "down"
-            admin_enabled = True
-        else:
-            link_state = "down"
-            admin_enabled = False
+        link_state, admin_enabled = _extract_state(cleaned)
+        speed, duplex = _extract_speed_duplex(cleaned)
 
-        parsed.append({"port_number": port_number, "link_state": link_state, "admin_enabled": admin_enabled})
+        parsed.append({
+            "port_number": port_number,
+            "link_state": link_state,
+            "admin_enabled": admin_enabled,
+            "speed": speed,
+            "duplex": duplex,
+        })
+        seen.add(port_number)
 
     return parsed
 
@@ -141,6 +179,10 @@ def apply_interface_snapshot(device: Device, interfaces: list[dict] | str) -> in
             db.session.add(port)
         port.link_state = entry["link_state"]
         port.admin_enabled = entry["admin_enabled"]
+        if entry.get("speed"):
+            port.speed = entry["speed"]
+        if entry.get("duplex"):
+            port.duplex = entry["duplex"]
 
     db.session.commit()
     return len(parsed)

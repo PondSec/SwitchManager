@@ -44,8 +44,9 @@ class ZyxelSSHDriver(SwitchDriver):
     def get_interfaces(self) -> list[dict]:
         cmd, output = self._first_success([
             "show interfaces status",
-            "show interfaces",
             "show interface status",
+            "show interface port-status",
+            "show interfaces",
         ])
         return [{"raw": output, "command": cmd}]
 
