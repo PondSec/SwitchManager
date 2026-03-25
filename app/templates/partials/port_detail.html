@@ -1,0 +1,5 @@
+<h3>Port {{ port.port_number }}</h3>
+<p>Alias: {{ port.alias or '-' }}</p>
+<p>Status: {{ port.link_state }}</p>
+<p>VLAN: {{ port.vlan_mode }} / {{ port.vlan_id }}</p>
+<button class="btn btn-secondary" data-close-modal>Schließen</button>

@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Netzwerk-Profile{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="row">
+    <h2>Erweiterte Netzwerk-Profile</h2>
+    <a class="btn btn-primary" href="{{ url_for('networks.create') }}">Neues Profil</a>
+  </div>
+  <table class="table">
+    <tr><th>Name</th><th>Zweck</th><th>VLAN</th><th>Gateway</th><th>DHCP</th><th>Aktion</th></tr>
+    {% for p in profiles %}
+    <tr>
+      <td>{{ p.name }}</td>
+      <td>{{ p.purpose }}</td>
+      <td>{{ p.vlan_id }}</td>
+      <td>{{ p.gateway_ip }}/{{ p.subnet_mask }}</td>
+      <td><span class="badge {{ 'success' if p.dhcp_enabled else 'failed' }}">{{ 'aktiv' if p.dhcp_enabled else 'aus' }}</span></td>
+      <td><a class="btn btn-secondary" href="{{ url_for('networks.edit', profile_id=p.id) }}">Öffnen</a></td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+{% endblock %}

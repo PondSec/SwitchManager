@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="card two-col">
+  <div>
+    <h2>VLAN erstellen</h2>
+    <form method="post" class="grid-form">
+      {{ form.hidden_tag() }}
+      <label>{{ form.vlan_id.label }}{{ form.vlan_id(class_='input') }}</label>
+      <label>{{ form.name.label }}{{ form.name(class_='input') }}</label>
+      <label class="toggle-line">{{ form.dry_run() }} <span>Nur Vorschau</span></label>
+      {{ form.submit(class_='btn btn-primary') }}
+    </form>
+    {% if preview %}
+    <pre class="code-block">{{ preview.commands|join('\n') }}</pre>
+    {% endif %}
+  </div>
+  <div>
+    <h2>VLAN-Liste</h2>
+    <table class="table"><tr><th>ID</th><th>Name</th></tr>
+    {% for v in vlans %}<tr><td>{{ v.vlan_id }}</td><td>{{ v.name }}</td></tr>{% endfor %}
+    </table>
+  </div>
+</section>
+{% endblock %}
