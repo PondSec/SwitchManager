@@ -5,9 +5,9 @@
   {% if device %}
   <p>Hostname: {{ device.name }} · Management-IP: {{ device.host }}</p>
   <div class="row">
-    <form method="post" action="{{ url_for('system.action', action='save') }}">{{ csrf_token() }}<input type="hidden" name="dry_run" value="1"><button class="btn btn-secondary">Save Vorschau</button></form>
-    <form method="post" action="{{ url_for('system.action', action='backup') }}">{{ csrf_token() }}<input type="hidden" name="dry_run" value="1"><button class="btn btn-secondary">Backup Vorschau</button></form>
-    <form method="post" action="{{ url_for('system.action', action='reboot') }}" data-confirm="Reboot wirklich durchführen?">{{ csrf_token() }}<input type="hidden" name="dry_run" value="1"><button class="btn btn-danger">Reboot Vorschau</button></form>
+    <form method="post" action="{{ url_for('system.action', action='save') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="dry_run" value="1"><button class="btn btn-secondary">Save Vorschau</button></form>
+    <form method="post" action="{{ url_for('system.action', action='backup') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="dry_run" value="1"><button class="btn btn-secondary">Backup Vorschau</button></form>
+    <form method="post" action="{{ url_for('system.action', action='reboot') }}" data-confirm="Reboot wirklich durchführen?"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="dry_run" value="1"><button class="btn btn-danger">Reboot Vorschau</button></form>
   </div>
   {% if result %}<pre class="code-block">{{ result.commands|join('\n') }}</pre>{% endif %}
   {% else %}

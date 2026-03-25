@@ -10,5 +10,7 @@ class DeviceForm(FlaskForm):
     username = StringField("SSH-Benutzer", validators=[DataRequired(), Length(min=1, max=128)])
     password = PasswordField("SSH-Passwort", validators=[Optional(), Length(max=255)])
     key_path = StringField("SSH-Key Pfad (optional)", validators=[Optional(), Length(max=255)])
-    driver_type = SelectField("Treiber", choices=[("zyxel-ssh", "Zyxel SSH (vorbereitet)")])
+    model = StringField("Modell", validators=[Optional(), Length(max=120)])
+    inventory_port_count = IntegerField("Port-Anzahl (Fallback)", validators=[Optional(), NumberRange(min=1, max=128)])
+    driver_type = SelectField("Treiber", choices=[("zyxel-ssh", "Zyxel SSH"), ("edgeos-ssh", "EdgeOS SSH (EdgeRouter)")])
     submit = SubmitField("Speichern")

@@ -3,12 +3,24 @@ from flask_login import current_user, login_required
 
 from app.extensions import db
 from app.forms.device_forms import DeviceForm
-from app.models.models import AuditLog, Device, NetworkProfile, Port, VLAN
+from app.models.models import AppSetting, AuditLog, Device, NetworkProfile, Port, VLAN
 from app.services.audit_service import write_audit
+from app.services.device_inventory import apply_interface_snapshot, ensure_device_inventory
+from app.services.snmp_fallback import probe_interface_states
 from app.utils.device_context import set_selected_device
 from app.utils.driver_factory import get_driver
 
 bp = Blueprint("devices", __name__, url_prefix="/devices")
+
+
+def _extract_value(raw: str, keys: list[str]) -> str | None:
+    for line in raw.splitlines():
+        normalized = line.strip()
+        lower = normalized.lower()
+        for key in keys:
+            if key in lower and ":" in normalized:
+                return normalized.split(":", 1)[1].strip()
+    return None
 
 
 @bp.route("/")
@@ -54,11 +66,13 @@ def create():
             ssh_port=form.ssh_port.data,
             username=form.username.data,
             password=form.password.data,
-            key_path=form.key_path.data,
+            key_path=(form.key_path.data or None),
             driver_type=form.driver_type.data,
+            model=form.model.data or "Unbekannt",
         )
         db.session.add(device)
         db.session.commit()
+        ensure_device_inventory(device, form.inventory_port_count.data)
         write_audit(current_user.username, "device_create", device.name, f"Device {device.host} erstellt", "success")
         flash("Gerät gespeichert.", "success")
         return redirect(url_for("devices.detail", device_id=device.id))
@@ -71,6 +85,7 @@ def detail(device_id: int):
     device = Device.query.get_or_404(device_id)
     set_selected_device(device.id)
 
+    ensure_device_inventory(device)
     ports = Port.query.filter_by(device_id=device.id).order_by(Port.port_number.asc()).all()
     vlans = VLAN.query.filter_by(device_id=device.id).order_by(VLAN.vlan_id.asc()).all()
     profiles = NetworkProfile.query.order_by(NetworkProfile.name.asc()).all()
@@ -100,21 +115,40 @@ def update_port(device_id: int, port_id: int):
     device = Device.query.get_or_404(device_id)
     port = Port.query.filter_by(device_id=device.id, id=port_id).first_or_404()
 
-    port.alias = request.form.get("alias", port.alias)
-    port.vlan_id = int(request.form.get("vlan_id", port.vlan_id))
-    port.vlan_mode = request.form.get("vlan_mode", port.vlan_mode)
-    port.admin_enabled = request.form.get("admin_enabled") == "on"
-    port.poe_enabled = request.form.get("poe_enabled") == "on"
-    db.session.commit()
+    new_alias = request.form.get("alias", port.alias)
+    new_vlan_id = int(request.form.get("vlan_id", port.vlan_id))
+    new_vlan_mode = request.form.get("vlan_mode", port.vlan_mode)
+    new_admin_enabled = request.form.get("admin_enabled") == "on"
+    new_poe_enabled = request.form.get("poe_enabled") == "on"
 
-    write_audit(
-        current_user.username,
-        "port_update",
-        device.name,
-        f"Port {port.port_number}: VLAN {port.vlan_id}/{port.vlan_mode}, admin={port.admin_enabled}, poe={port.poe_enabled}",
-        "success",
-    )
-    flash(f"Port {port.port_number} aktualisiert.", "success")
+    driver = get_driver(device)
+    try:
+        driver.connect()
+        driver.set_port_admin_state(port.port_number, new_admin_enabled, dry_run=False)
+        driver.assign_port_to_vlan(port.port_number, new_vlan_id, new_vlan_mode, dry_run=False)
+        driver.set_poe_state(port.port_number, new_poe_enabled, dry_run=False)
+
+        port.alias = new_alias
+        port.vlan_id = new_vlan_id
+        port.vlan_mode = new_vlan_mode
+        port.admin_enabled = new_admin_enabled
+        port.poe_enabled = new_poe_enabled
+        db.session.commit()
+
+        write_audit(
+            current_user.username,
+            "port_update",
+            device.name,
+            f"Port {port.port_number}: VLAN {port.vlan_id}/{port.vlan_mode}, admin={port.admin_enabled}, poe={port.poe_enabled}",
+            "success",
+        )
+        flash(f"Port {port.port_number} aktualisiert und auf Gerät übernommen.", "success")
+    except Exception as exc:  # noqa: BLE001
+        db.session.rollback()
+        write_audit(current_user.username, "port_update", device.name, "Port-Update fehlgeschlagen", "failed", str(exc))
+        flash(f"Port-Update fehlgeschlagen: {exc}", "error")
+    finally:
+        driver.close()
     return redirect(url_for("devices.detail", device_id=device.id, tab="ports", selected_port=port.id))
 
 
@@ -127,10 +161,42 @@ def action(device_id: int, action: str):
         driver = get_driver(device)
         try:
             driver.connect()
+            synced_interfaces = 0
+            try:
+                info = driver.get_system_info()
+                raw_info = str(info.get("raw", ""))
+                model = _extract_value(raw_info, ["model"]) or _extract_value(raw_info, ["product model"])
+                firmware = _extract_value(raw_info, ["firmware", "version"])
+                mgmt_ip = _extract_value(raw_info, ["management ip", "ip address"])
+                if model:
+                    device.model = model
+                if firmware:
+                    device.firmware = firmware
+                if mgmt_ip:
+                    device.mgmt_ip = mgmt_ip
+            except Exception:  # noqa: BLE001
+                pass
+
+            try:
+                interfaces = driver.get_interfaces()
+                synced_interfaces = apply_interface_snapshot(device, interfaces)
+            except Exception:  # noqa: BLE001
+                synced_interfaces = 0
+
+            if synced_interfaces == 0:
+                setting = AppSetting.query.filter_by(section="controller", key="snmp_community").first()
+                community = (setting.value.strip() if setting and setting.value else "public")
+                snmp_rows = probe_interface_states(device.host, community=community, timeout=2)
+                if snmp_rows:
+                    synced_interfaces = apply_interface_snapshot(device, snmp_rows)
+
+            created_ports, total_ports = ensure_device_inventory(device)
             device.status = "online"
             db.session.commit()
-            write_audit(current_user.username, "device_sync", device.name, "Synchronisierung erfolgreich", "success")
-            flash("Synchronisierung erfolgreich.", "success")
+
+            details = f"Sync ok: interfaces={synced_interfaces}, created_ports={created_ports}, total_ports={total_ports}"
+            write_audit(current_user.username, "device_sync", device.name, details, "success")
+            flash(f"Synchronisierung erfolgreich ({total_ports} Ports verfügbar).", "success")
         except Exception as exc:  # noqa: BLE001
             device.status = "offline"
             db.session.commit()
@@ -139,7 +205,21 @@ def action(device_id: int, action: str):
         finally:
             driver.close()
     elif action == "reconnect":
-        return redirect(url_for("devices.test_connection", device_id=device.id))
+        driver = get_driver(device)
+        try:
+            driver.connect()
+            device.status = "online"
+            db.session.commit()
+            flash("Reconnect erfolgreich.", "success")
+            write_audit(current_user.username, "device_reconnect", device.name, "Reconnect erfolgreich", "success")
+        except Exception as exc:  # noqa: BLE001
+            device.status = "offline"
+            db.session.commit()
+            flash(f"Reconnect fehlgeschlagen: {exc}", "error")
+            write_audit(current_user.username, "device_reconnect", device.name, "Reconnect fehlgeschlagen", "failed", str(exc))
+        finally:
+            driver.close()
+        return redirect(url_for("devices.detail", device_id=device.id))
     elif action == "remove":
         name = device.name
         db.session.delete(device)
@@ -157,7 +237,23 @@ def edit(device_id: int):
     device = Device.query.get_or_404(device_id)
     form = DeviceForm(obj=device)
     if form.validate_on_submit():
-        form.populate_obj(device)
+        device.name = form.name.data
+        device.host = form.host.data
+        device.ssh_port = form.ssh_port.data
+        device.username = form.username.data
+        device.driver_type = form.driver_type.data
+        device.model = form.model.data or device.model or "Unbekannt"
+
+        # Passwort nur überschreiben, wenn explizit neu gesetzt.
+        if (form.password.data or "").strip():
+            device.password = form.password.data
+
+        # Key-Pfad nur ändern, wenn ein Wert eingegeben wurde.
+        if form.key_path.data is not None and (form.key_path.data or "").strip():
+            device.key_path = form.key_path.data.strip()
+
+        device.key_path = (device.key_path or "").strip() or None
+        ensure_device_inventory(device, form.inventory_port_count.data)
         db.session.commit()
         write_audit(current_user.username, "device_edit", device.name, "Gerät bearbeitet", "success")
         flash("Gerät aktualisiert.", "success")
