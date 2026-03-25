@@ -13,10 +13,10 @@
       </div>
     </div>
     <div class="row wrap">
-      <form method="post" action="{{ url_for('devices.action', device_id=device.id, action='sync') }}">{{ csrf_token() }}<button class="btn btn-secondary">Synchronisieren</button></form>
-      <form method="post" action="{{ url_for('devices.action', device_id=device.id, action='reconnect') }}">{{ csrf_token() }}<button class="btn btn-secondary">Reconnect</button></form>
+      <form method="post" action="{{ url_for('devices.action', device_id=device.id, action='sync') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-secondary">Synchronisieren</button></form>
+      <form method="post" action="{{ url_for('devices.action', device_id=device.id, action='reconnect') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-secondary">Reconnect</button></form>
       <a class="btn btn-secondary" href="{{ url_for('devices.edit', device_id=device.id) }}">Bearbeiten</a>
-      <form method="post" action="{{ url_for('devices.action', device_id=device.id, action='remove') }}" data-confirm="Gerät wirklich entfernen?">{{ csrf_token() }}<button class="btn btn-danger">Entfernen</button></form>
+      <form method="post" action="{{ url_for('devices.action', device_id=device.id, action='remove') }}" data-confirm="Gerät wirklich entfernen?"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-danger">Entfernen</button></form>
     </div>
   </div>
 </section>
@@ -91,9 +91,9 @@
   <div id="tab-maint" class="tab-content">
     <h3>Wartung / Aktionen</h3>
     <div class="row wrap">
-      <form method="post" action="{{ url_for('system.action', action='save') }}">{{ csrf_token() }}<input type="hidden" name="dry_run" value="1"><button class="btn btn-secondary">Config Save (Dry-Run)</button></form>
-      <form method="post" action="{{ url_for('system.action', action='backup') }}">{{ csrf_token() }}<input type="hidden" name="dry_run" value="1"><button class="btn btn-secondary">Backup (Dry-Run)</button></form>
-      <form method="post" action="{{ url_for('system.action', action='reboot') }}" data-confirm="Reboot dry-run ausführen?">{{ csrf_token() }}<input type="hidden" name="dry_run" value="1"><button class="btn btn-danger">Reboot (Dry-Run)</button></form>
+      <form method="post" action="{{ url_for('system.action', action='save') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="dry_run" value="1"><button class="btn btn-secondary">Config Save (Dry-Run)</button></form>
+      <form method="post" action="{{ url_for('system.action', action='backup') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="dry_run" value="1"><button class="btn btn-secondary">Backup (Dry-Run)</button></form>
+      <form method="post" action="{{ url_for('system.action', action='reboot') }}" data-confirm="Reboot dry-run ausführen?"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="dry_run" value="1"><button class="btn btn-danger">Reboot (Dry-Run)</button></form>
     </div>
   </div>
 </section>

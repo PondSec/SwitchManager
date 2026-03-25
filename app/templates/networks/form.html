@@ -37,8 +37,8 @@
 
     {% if profile %}
     <div class="row" style="margin-top:12px;">
-      <form method="post" action="{{ url_for('networks.apply', profile_id=profile.id) }}">{{ csrf_token() }}<input type="hidden" name="dry_run" value="1"><button class="btn btn-secondary">Dry Run anwenden</button></form>
-      <form method="post" action="{{ url_for('networks.apply', profile_id=profile.id) }}" data-confirm="Profil wirklich auf Gerät anwenden?">{{ csrf_token() }}<input type="hidden" name="dry_run" value="0"><button class="btn btn-danger">Scharf anwenden</button></form>
+      <form method="post" action="{{ url_for('networks.apply', profile_id=profile.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="dry_run" value="1"><button class="btn btn-secondary">Dry Run anwenden</button></form>
+      <form method="post" action="{{ url_for('networks.apply', profile_id=profile.id) }}" data-confirm="Profil wirklich auf Gerät anwenden?"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="dry_run" value="0"><button class="btn btn-danger">Scharf anwenden</button></form>
     </div>
     {% endif %}
 
