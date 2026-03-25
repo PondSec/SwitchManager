@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import socket
+import time
 
 import paramiko
 from flask import current_app
@@ -45,7 +46,7 @@ class SSHClientService:
     def execute_command(self, command: str) -> str:
         if not self.client:
             raise SSHExecutionError("SSH-Client nicht verbunden")
-        stdin, stdout, stderr = self.client.exec_command(command, timeout=current_app.config.get("SSH_DEFAULT_TIMEOUT", 8))
+        stdin, stdout, stderr = self.client.exec_command(command, timeout=current_app.config.get("SSH_DEFAULT_TIMEOUT", 12))
         output = stdout.read().decode("utf-8", errors="replace")
         error = stderr.read().decode("utf-8", errors="replace")
         if error.strip():
@@ -53,10 +54,35 @@ class SSHClientService:
         return output.strip()
 
     def execute_config_commands(self, commands: list[str]) -> list[str]:
-        results = []
+        if not self.client:
+            raise SSHExecutionError("SSH-Client nicht verbunden")
+
+        channel = self.client.invoke_shell()
+        timeout = float(current_app.config.get("SSH_DEFAULT_TIMEOUT", 12))
+        start = time.monotonic()
+        buffer = ""
+        while time.monotonic() - start < timeout:
+            if channel.recv_ready():
+                buffer += channel.recv(65535).decode("utf-8", errors="replace")
+                if buffer.strip():
+                    break
+            time.sleep(0.1)
+
+        responses: list[str] = []
         for cmd in commands:
-            results.append(self.execute_command(cmd))
-        return results
+            channel.send(cmd + "\n")
+            chunk = ""
+            started = time.monotonic()
+            while time.monotonic() - started < timeout:
+                if channel.recv_ready():
+                    chunk += channel.recv(65535).decode("utf-8", errors="replace")
+                    if any(chunk.rstrip().endswith(prompt) for prompt in ("#", ">", "$") ):
+                        break
+                time.sleep(0.1)
+            responses.append(chunk.strip())
+
+        channel.close()
+        return responses
 
     def close(self) -> None:
         if self.client:
