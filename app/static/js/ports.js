@@ -148,11 +148,15 @@ if (workspace) {
       .map((port) => {
         const selected = state.selected.has(port.id) ? 'selected' : '';
         const statusClass = portClass(port);
-        const poe = port.poeMode === 'poe_plus' ? '<span class="poe-icon">⚡</span>' : '';
-        const device = port.connectedDevice ? '<span class="device-icon">◼</span>' : '';
+        const poe = port.poeMode === 'poe_plus' ? '<i class="poe-icon" data-lucide="zap"></i>' : '';
+        const device = port.connectedDevice ? '<i class="device-icon" data-lucide="monitor"></i>' : '';
         return `<button type="button" class="port-tile ${statusClass} ${selected}" data-port-id="${port.id}" title="Port ${port.portNumber} | ${vlanLabel(port.vlanNative)}">${poe}${device}<span>${port.portNumber}</span></button>`;
       })
       .join('');
+
+    if (window.lucide) {
+      window.lucide.createIcons();
+    }
 
     portsRack.querySelectorAll('.port-tile').forEach((button) => {
       button.addEventListener('click', (event) => {
