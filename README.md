@@ -9,6 +9,7 @@ Professionelle, mehrseitige Flask-Webanwendung für self-hosted Switch-Managemen
 - SSH-Layer (Paramiko) als primärer Transport
 - Vorbereitung für weitere Transporte (Telnet/SNMP/HTTP Replay)
 - VLAN/Port/PoE/System-Aktionen mit Dry-Run-Vorschau
+- Erweiterte Netzwerk-Profile (DHCP, DNS, IGMP, Guarding, mDNS, UPnP) mit komplexer Admin-UI und Apply/Dry-Run
 - Audit-Logging in DB + Log-Datei
 - Dashboard, Geräte, VLAN, Ports (inkl. 24-Port Frontpanel), PoE, System, Audit, Einstellungen
 - Health-Endpoint `/health/`

@@ -48,6 +48,7 @@ def _register_blueprints(app: Flask) -> None:
     from .blueprints.dashboard.routes import bp as dashboard_bp
     from .blueprints.devices.routes import bp as devices_bp
     from .blueprints.health.routes import bp as health_bp
+    from .blueprints.networks.routes import bp as networks_bp
     from .blueprints.poe.routes import bp as poe_bp
     from .blueprints.ports.routes import bp as ports_bp
     from .blueprints.settings.routes import bp as settings_bp
@@ -57,6 +58,7 @@ def _register_blueprints(app: Flask) -> None:
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(devices_bp)
+    app.register_blueprint(networks_bp)
     app.register_blueprint(vlans_bp)
     app.register_blueprint(ports_bp)
     app.register_blueprint(poe_bp)
