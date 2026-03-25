@@ -50,6 +50,10 @@ small { color: var(--text-muted); }
   grid-template-columns: 240px minmax(220px, 280px) minmax(0, 1fr);
 }
 
+.app-shell.no-secondary {
+  grid-template-columns: 240px minmax(0, 1fr);
+}
+
 .primary-sidebar,
 .secondary-sidebar {
   position: sticky;

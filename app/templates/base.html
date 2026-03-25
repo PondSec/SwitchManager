@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 </head>
 <body>
-<div class="app-shell">
+<div class="app-shell{% if not show_secondary_sidebar %} no-secondary{% endif %}">
   <aside class="primary-sidebar">
     <div class="primary-brand">
       <div class="primary-logo">SM</div>
