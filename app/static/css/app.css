@@ -649,6 +649,6 @@ a:focus-visible {
   .split-two { grid-template-columns: 1fr; }
   .field-row,
   .toolbar { grid-template-columns: 1fr; }
-  .frontpanel { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+  .frontpanel { grid-template-columns: repeat(6, minmax(42px, 54px)); justify-content: space-between; }
   .tray { right: var(--space-4); width: calc(100vw - 32px); }
 }
