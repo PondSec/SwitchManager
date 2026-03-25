@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 {% block content %}
 <section class="card ports-workspace" id="ports-workspace" data-ports='{{ ports_payload|tojson }}' data-vlans='{{ vlan_options|tojson }}'>
-  <header class="ports-header">
+  <header class="ports-header unifi-like">
     <div>
       <h2>Port Configuration</h2>
-      <p class="muted">Multi-Port-Editing im UniFi-Stil</p>
+      <p class="muted">Layout im UniFi-Stil mit Port-Matrix, Filtern und Detailtabelle</p>
     </div>
     <div class="ports-actions">
       <button type="button" class="btn btn-secondary" data-action="deselect-all">Deselect All</button>
@@ -12,7 +12,26 @@
     </div>
   </header>
 
+  <div class="ports-tabs" role="tablist" aria-label="Port navigation">
+    <button type="button" class="ports-tab active" aria-selected="true">Ports</button>
+    <button type="button" class="ports-tab" aria-selected="false">Insights</button>
+    <button type="button" class="ports-tab" aria-selected="false">VLANs</button>
+  </div>
+
   <div class="ports-rack" id="ports-rack" aria-label="Switch ports"></div>
+
+  <div class="ports-filters" id="ports-filters">
+    <label><input type="checkbox" data-filter="all" checked> All</label>
+    <label><input type="checkbox" data-filter="in_use"> In Use</label>
+    <label><input type="checkbox" data-filter="available"> Available</label>
+    <label><input type="checkbox" data-filter="no_poe"> No PoE</label>
+    <label><input type="checkbox" data-filter="poe_plus"> PoE+</label>
+    <label><input type="checkbox" data-filter="fe"> FE</label>
+    <label><input type="checkbox" data-filter="gbe"> GbE</label>
+    <label><input type="checkbox" data-filter="2_5gbe"> 2.5 GbE</label>
+    <label><input type="checkbox" data-filter="10gbe" checked> 10 GbE</label>
+    <label><input type="checkbox" data-filter="sfp_plus"> SFP+</label>
+  </div>
 
   <div class="ports-selected-line" id="ports-selected-line">No ports selected</div>
 
@@ -85,9 +104,20 @@
       </footer>
     </form>
   </section>
+
+  <section class="ports-table-shell">
+    <table class="table ports-detail-table">
+      <thead>
+        <tr>
+          <th>Port</th><th>Name</th><th>Operation</th><th>PoEMode</th><th>Speed</th>
+          <th>Connection</th><th>Profile</th><th>Activity</th><th>TxSum</th><th>RxSum</th><th>TxRate</th>
+        </tr>
+      </thead>
+      <tbody id="ports-detail-body"></tbody>
+    </table>
+  </section>
 </section>
 
-<section class="card" id="port-table-wrapper">{% include 'partials/port_table.html' %}</section>
 <div id="modal" class="modal hidden"><div class="modal-content" id="modal-content"></div></div>
 {% endblock %}
 {% block scripts %}<script src="{{ url_for('static', filename='js/ports.js') }}"></script>{% endblock %}
