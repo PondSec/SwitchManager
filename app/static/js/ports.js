@@ -17,16 +17,6 @@ if (modal) {
   });
 }
 
-const portTableWrapper = document.getElementById('port-table-wrapper');
-if (portTableWrapper) {
-  setInterval(async () => {
-    const res = await fetch('/ports/refresh');
-    if (res.ok) {
-      portTableWrapper.innerHTML = await res.text();
-    }
-  }, 15000);
-}
-
 const workspace = document.getElementById('ports-workspace');
 
 if (workspace) {
@@ -42,6 +32,8 @@ if (workspace) {
   const cancelBtn = document.getElementById('cancel-changes');
   const selectAllBtn = workspace.querySelector('[data-action="select-all"]');
   const deselectAllBtn = workspace.querySelector('[data-action="deselect-all"]');
+  const detailBody = document.getElementById('ports-detail-body');
+  const filterInputs = [...workspace.querySelectorAll('#ports-filters input[type="checkbox"]')];
 
   const state = {
     ports: JSON.parse(workspace.dataset.ports || '[]'),
@@ -56,12 +48,41 @@ if (workspace) {
     return vlan ? `${vlan.name} (${vlan.id})` : `VLAN-${id} (${id})`;
   };
 
+  const speedLabel = (port) => {
+    if (port.portNumber > 48) return '10 GbE';
+    const speed = String(port.speed || '').toLowerCase();
+    if (speed.includes('10')) return '10 GbE';
+    if (speed.includes('2.5')) return '2.5 GbE';
+    if (speed.includes('100m') || speed === 'fe') return 'FE';
+    return 'GbE';
+  };
+
   const portClass = (port) => {
     if (port.portNumber > 48) return 'sfp';
+    if (speedLabel(port) === '10 GbE') return 'ten-gbe';
     if (port.status === 'disabled') return 'disabled';
     if (port.status === 'restricted') return 'warning';
     if (port.linkState !== 'up') return 'disconnected';
     return 'active';
+  };
+
+  const shouldIncludePort = (port) => {
+    const activeFilters = filterInputs.filter((input) => input.checked).map((input) => input.dataset.filter);
+    if (!activeFilters.length || activeFilters.includes('all')) return true;
+
+    const rules = {
+      in_use: port.linkState === 'up',
+      available: !port.connectedDevice,
+      no_poe: port.poeMode === 'off',
+      poe_plus: port.poeMode === 'poe_plus',
+      fe: speedLabel(port) === 'FE',
+      gbe: speedLabel(port) === 'GbE',
+      '2_5gbe': speedLabel(port) === '2.5 GbE',
+      '10gbe': speedLabel(port) === '10 GbE',
+      sfp_plus: port.portNumber > 48,
+    };
+
+    return activeFilters.some((key) => rules[key]);
   };
 
   const renderVlanOptions = () => {
@@ -145,6 +166,7 @@ if (workspace) {
 
   const renderPorts = () => {
     portsRack.innerHTML = state.ports
+      .filter(shouldIncludePort)
       .map((port) => {
         const selected = state.selected.has(port.id) ? 'selected' : '';
         const statusClass = portClass(port);
@@ -199,6 +221,30 @@ if (workspace) {
     });
   };
 
+  const renderTable = () => {
+    const rows = state.ports.filter(shouldIncludePort).map((port) => {
+      const label = port.portNumber > 48 ? `SFP+${port.portNumber - 48}` : `Port-${port.portNumber}`;
+      const connected = port.connectedDevice || '-';
+      const profile = port.profile === 'manual' ? 'Manual' : 'Auto';
+      const activityPct = Math.max(8, Math.min(95, parseFloat(port.txRate) || 8));
+      return `<tr>
+        <td>${port.portNumber}</td>
+        <td>${label}</td>
+        <td>🔒</td>
+        <td>${port.poeMode === 'poe_plus' ? 'PoE+' : '-'}</td>
+        <td>${speedLabel(port)}</td>
+        <td>${connected}</td>
+        <td>${profile}</td>
+        <td><div class="activity-bar"><span style="width:${activityPct}%"></span></div></td>
+        <td>${port.txRate === '0 Mbps' ? '0.0 GB' : port.txRate}</td>
+        <td>${port.rxRate === '0 Mbps' ? '0.0 GB' : port.rxRate}</td>
+        <td>${port.txRate}</td>
+      </tr>`;
+    }).join('');
+
+    detailBody.innerHTML = rows || '<tr><td colspan="11" class="muted">No matching ports.</td></tr>';
+  };
+
   form.addEventListener('change', updateDraftFromForm);
 
   cancelBtn.addEventListener('click', () => {
@@ -231,6 +277,7 @@ if (workspace) {
     state.ports = state.ports.map((port) => updated.get(port.id) || port);
 
     renderPorts();
+    renderTable();
     renderSelectionLine();
     renderPanel();
   });
@@ -251,8 +298,29 @@ if (workspace) {
     renderPanel();
   });
 
+  filterInputs.forEach((input) => {
+    input.addEventListener('change', () => {
+      if (input.dataset.filter === 'all' && input.checked) {
+        filterInputs.forEach((entry) => {
+          if (entry !== input) entry.checked = false;
+        });
+      }
+      if (input.dataset.filter !== 'all' && input.checked) {
+        const allInput = filterInputs.find((entry) => entry.dataset.filter === 'all');
+        if (allInput) allInput.checked = false;
+      }
+      const allInput = filterInputs.find((entry) => entry.dataset.filter === 'all');
+      const selectedSpecific = filterInputs.some((entry) => entry.dataset.filter !== 'all' && entry.checked);
+      if (!selectedSpecific && allInput) allInput.checked = true;
+
+      renderPorts();
+      renderTable();
+    });
+  });
+
   renderVlanOptions();
   renderPorts();
+  renderTable();
   renderSelectionLine();
   renderPanel();
 }
