@@ -393,11 +393,10 @@ input[type='radio'] { accent-color: var(--accent); }
 
 .frontpanel {
   display: grid;
-  grid-template-columns: repeat(12, minmax(26px, 42px));
-  justify-content: space-between;
-  gap: 4px;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 6px;
   margin: var(--space-3) 0;
-  padding: 4px;
+  padding: 6px;
   border: 1px solid #2c4569;
   border-radius: 12px;
   background: #0d1728;
@@ -415,7 +414,7 @@ input[type='radio'] { accent-color: var(--accent); }
   font-weight: 700;
   cursor: pointer;
 }
-.port-number { line-height: 1; font-size: .72rem; }
+.port-number { line-height: 1; font-size: .82rem; }
 .port.up { background: #3acb84; border-color: #34be79; }
 .port.down { background: #98a3b5; }
 .port.poe::after {
@@ -427,14 +426,14 @@ input[type='radio'] { accent-color: var(--accent); }
 }
 .port-icon {
   position: absolute;
-  top: 3px;
-  width: 10px;
-  height: 10px;
+  top: 4px;
+  width: 12px;
+  height: 12px;
   stroke-width: 2.2;
   color: #13253d;
 }
-.port-icon-poe { right: 3px; }
-.port-icon-link { left: 3px; }
+.port-icon-poe { right: 4px; }
+.port-icon-link { left: 4px; }
 
 .modal { position: fixed; inset: 0; background: rgba(3, 9, 19, .74); display: grid; place-items: center; z-index: 60; }
 .modal-content {
@@ -490,9 +489,8 @@ input[type='radio'] { accent-color: var(--accent); }
 
 .ports-rack {
   display: grid;
-  grid-template-columns: repeat(16, minmax(22px, 36px));
-  justify-content: space-between;
-  gap: 4px;
+  grid-template-columns: repeat(16, minmax(0, 1fr));
+  gap: 6px;
   padding: 6px;
   border: 1px solid #2a4265;
   background: #0d1728;
@@ -504,12 +502,12 @@ input[type='radio'] { accent-color: var(--accent); }
   aspect-ratio: 1 / 1;
   min-height: 0;
   padding: 0;
-  border-radius: 6px;
+  border-radius: 7px;
   border: 1px solid #3f5473;
   background: #7f8a9c;
   color: #0d1422;
   font-weight: 700;
-  font-size: .72rem;
+  font-size: .82rem;
   display: grid;
   place-items: center;
   cursor: pointer;
@@ -529,13 +527,13 @@ input[type='radio'] { accent-color: var(--accent); }
 .poe-icon,
 .device-icon {
   position: absolute;
-  top: 2px;
-  width: 9px;
-  height: 9px;
+  top: 3px;
+  width: 10px;
+  height: 10px;
   stroke-width: 2.2;
 }
-.poe-icon { right: 2px; color: #10263f; }
-.device-icon { left: 2px; color: #10263f; }
+.poe-icon { right: 3px; color: #10263f; }
+.device-icon { left: 3px; color: #10263f; }
 .port-tile.sfp .poe-icon,
 .port-tile.sfp .device-icon,
 .port-tile.ten-gbe .poe-icon,
