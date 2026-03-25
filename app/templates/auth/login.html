@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Login</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body class="auth-body">
+  <section class="auth-card card">
+    <h1>Controller Login</h1>
+    <form method="post" class="grid-form">
+      {{ form.hidden_tag() }}
+      <label>{{ form.username.label }} {{ form.username(class_='input') }}</label>
+      <label>{{ form.password.label }} {{ form.password(class_='input') }}</label>
+      {{ form.submit(class_='btn btn-primary') }}
+    </form>
+    <p class="muted">Standard-Login: admin / admin12345</p>
+  </section>
+</body>
+</html>

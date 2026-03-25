@@ -1,0 +1,13 @@
+<table class="table">
+  <tr><th>Port</th><th>Link</th><th>Admin</th><th>Speed</th><th>Duplex</th><th>VLAN</th></tr>
+  {% for p in ports %}
+  <tr>
+    <td>{{ p.port_number }}</td>
+    <td><span class="badge {{ p.link_state }}">{{ p.link_state }}</span></td>
+    <td>{{ 'on' if p.admin_enabled else 'off' }}</td>
+    <td>{{ p.speed }}</td>
+    <td>{{ p.duplex }}</td>
+    <td>{{ p.vlan_mode }} / {{ p.vlan_id }}</td>
+  </tr>
+  {% endfor %}
+</table>
