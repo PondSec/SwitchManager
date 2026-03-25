@@ -14,19 +14,19 @@ class NavItem:
 
 
 PRIMARY_NAV: list[NavItem] = [
-    NavItem("Dashboard", "dashboard.index", "◫"),
-    NavItem("Devices", "devices.index", "⛁"),
-    NavItem("Network", "networks.index", "◍"),
-    NavItem("Clients", "vlans.index", "◎"),
-    NavItem("Insights", "audit.index", "◌"),
-    NavItem("Logs", "system.index", "◔"),
-    NavItem("Settings", "settings.index", "⚙"),
+    NavItem("Dashboard", "dashboard.index", "layout-dashboard"),
+    NavItem("Devices", "devices.index", "server"),
+    NavItem("Network", "networks.index", "network"),
+    NavItem("Clients", "vlans.index", "users"),
+    NavItem("Insights", "audit.index", "activity"),
+    NavItem("Logs", "system.index", "file-text"),
+    NavItem("Settings", "settings.index", "settings"),
 ]
 
 SYSTEM_ACTIONS: list[NavItem] = [
-    NavItem("Hilfe", "system.index", "?"),
-    NavItem("Benachrichtigungen", "audit.index", "!"),
-    NavItem("Konto", "auth.users", "☻"),
+    NavItem("Hilfe", "system.index", "life-buoy"),
+    NavItem("Benachrichtigungen", "audit.index", "bell"),
+    NavItem("Konto", "auth.users", "user-round"),
 ]
 
 SETTINGS_NAV: list[NavItem] = [

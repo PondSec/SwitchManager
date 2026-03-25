@@ -13,14 +13,14 @@
     <nav class="primary-nav" aria-label="Globale Navigation">
       {% for item in primary_nav %}
       <a href="{{ item.url }}" class="primary-nav-item{% if item.active %} active{% endif %}" title="{{ item.label }}" aria-label="{{ item.label }}">
-        <span>{{ item.icon }}</span>
+        <i data-lucide="{{ item.icon }}"></i>
       </a>
       {% endfor %}
     </nav>
     <nav class="primary-system" aria-label="System Aktionen">
       {% for item in system_actions %}
       <a href="{{ item.url }}" class="primary-nav-item{% if item.active %} active{% endif %}" title="{{ item.label }}" aria-label="{{ item.label }}">
-        <span>{{ item.icon }}</span>
+        <i data-lucide="{{ item.icon }}"></i>
       </a>
       {% endfor %}
     </nav>
@@ -49,11 +49,17 @@
         <h1>{{ page_title }}</h1>
       </div>
       <div class="topbar-right">
-        <button type="button" class="top-action" data-toggle="search-panel">⌕</button>
-        <button type="button" class="top-action" data-toggle="notifications-menu">🔔</button>
-        <button type="button" class="top-action" data-toggle="status-menu">●</button>
+        <button type="button" class="top-action" data-toggle="search-panel" aria-label="Suche">
+          <i data-lucide="search"></i>
+        </button>
+        <button type="button" class="top-action" data-toggle="notifications-menu" aria-label="Benachrichtigungen">
+          <i data-lucide="bell"></i>
+        </button>
+        <button type="button" class="top-action" data-toggle="status-menu" aria-label="Status">
+          <i data-lucide="shield-check"></i>
+        </button>
         <div class="menu-wrap">
-          <button type="button" class="top-action user-action" data-toggle="user-menu">{{ current_user.username[:1]|upper if current_user.is_authenticated else 'U' }}</button>
+          <button type="button" class="top-action user-action" data-toggle="user-menu" aria-label="User Menü">{{ current_user.username[:1]|upper if current_user.is_authenticated else 'U' }}</button>
           <div class="dropdown" id="user-menu">
             <a href="{{ url_for('auth.users') }}">Profil / User</a>
             <a href="{{ url_for('settings.index') }}">Settings</a>
@@ -95,7 +101,13 @@
     </section>
   </main>
 </div>
+<script src="https://unpkg.com/lucide@latest"></script>
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script>
+  if (window.lucide) {
+    window.lucide.createIcons();
+  }
+</script>
 {% block scripts %}{% endblock %}
 </body>
 </html>
