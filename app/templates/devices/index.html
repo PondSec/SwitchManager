@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="card">
+  <div class="row row-space">
+    <div>
+      <h2>Geräteübersicht</h2>
+      <p class="muted">Zentrale Verwaltung aller eingebundenen Switches mit Filter, Status und Schnellaktionen.</p>
+    </div>
+    <a class="btn btn-primary" href="{{ url_for('devices.create') }}">Switch hinzufügen</a>
+  </div>
+
+  <form method="get" class="toolbar">
+    <input class="input" type="search" name="q" value="{{ filters.q }}" placeholder="Name, IP, Modell suchen">
+    <select class="input" name="status">
+      <option value="all" {% if filters.status == 'all' %}selected{% endif %}>Status: Alle</option>
+      <option value="online" {% if filters.status == 'online' %}selected{% endif %}>Online</option>
+      <option value="offline" {% if filters.status == 'offline' %}selected{% endif %}>Offline</option>
+      <option value="unknown" {% if filters.status == 'unknown' %}selected{% endif %}>Unknown</option>
+    </select>
+    <select class="input" name="sort">
+      <option value="name" {% if filters.sort == 'name' %}selected{% endif %}>Sortierung: Name</option>
+      <option value="status" {% if filters.sort == 'status' %}selected{% endif %}>Status</option>
+      <option value="model" {% if filters.sort == 'model' %}selected{% endif %}>Modell</option>
+      <option value="ip" {% if filters.sort == 'ip' %}selected{% endif %}>IP</option>
+    </select>
+    <select class="input" name="view">
+      <option value="table" {% if filters.view == 'table' %}selected{% endif %}>Tabellenansicht</option>
+      <option value="cards" {% if filters.view == 'cards' %}selected{% endif %}>Kartenansicht</option>
+    </select>
+    <button class="btn btn-secondary">Anwenden</button>
+  </form>
+</section>
+
+{% if filters.view == 'cards' %}
+<section class="device-wall">
+  {% for d in devices %}
+  <article class="card device-card">
+    <div class="row row-space">
+      <h3>{{ d.name }}</h3>
+      <span class="badge {{ d.status }}">{{ d.status }}</span>
+    </div>
+    <p class="muted">{{ d.model }} · {{ d.host }}:{{ d.ssh_port }}</p>
+    <div class="row wrap">
+      <a class="btn btn-primary" href="{{ url_for('devices.detail', device_id=d.id) }}">Öffnen</a>
+      <form method="post" action="{{ url_for('devices.test_connection', device_id=d.id) }}">{{ csrf_token() }}<button class="btn btn-secondary">Verbindung testen</button></form>
+      <a class="btn btn-secondary" href="{{ url_for('devices.edit', device_id=d.id) }}">Bearbeiten</a>
+    </div>
+  </article>
+  {% endfor %}
+</section>
+{% else %}
+<section class="card">
+  <table class="table">
+    <tr><th>Name</th><th>Status</th><th>Modell</th><th>IP</th><th>Zuletzt gesehen</th><th>Aktionen</th></tr>
+    {% for d in devices %}
+    <tr>
+      <td>{{ d.name }}</td>
+      <td><span class="badge {{ d.status }}">{{ d.status }}</span></td>
+      <td>{{ d.model }}</td>
+      <td>{{ d.host }}</td>
+      <td>{{ d.last_seen_at.strftime('%Y-%m-%d %H:%M') if d.last_seen_at else '-' }}</td>
+      <td class="row wrap">
+        <a class="btn btn-primary" href="{{ url_for('devices.detail', device_id=d.id) }}">Details</a>
+        <form method="post" action="{{ url_for('devices.test_connection', device_id=d.id) }}">{{ csrf_token() }}<button class="btn btn-secondary">Test</button></form>
+        <a class="btn btn-secondary" href="{{ url_for('devices.edit', device_id=d.id) }}">Edit</a>
+        <form method="post" action="{{ url_for('devices.delete', device_id=d.id) }}" data-confirm="Gerät wirklich löschen?">{{ csrf_token() }}<button class="btn btn-danger">Delete</button></form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,23 @@
+<h3>Port {{ port.port_number }} bearbeiten</h3>
+<form method="post" action="{{ url_for('devices.update_port', device_id=port.device_id, port_id=port.id) }}" class="grid-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <label>Alias
+    <input class="input" name="alias" value="{{ port.alias }}">
+  </label>
+  <label>VLAN-ID
+    <input class="input" name="vlan_id" type="number" min="1" max="4094" value="{{ port.vlan_id }}">
+  </label>
+  <label>VLAN-Modus
+    <select class="input" name="vlan_mode">
+      <option value="tagged" {% if port.vlan_mode == 'tagged' %}selected{% endif %}>Tagged</option>
+      <option value="untagged" {% if port.vlan_mode == 'untagged' %}selected{% endif %}>Untagged</option>
+      <option value="excluded" {% if port.vlan_mode == 'excluded' %}selected{% endif %}>Excluded</option>
+    </select>
+  </label>
+  <label class="toggle-line"><input type="checkbox" name="admin_enabled" {% if port.admin_enabled %}checked{% endif %}> Admin enabled</label>
+  <label class="toggle-line"><input type="checkbox" name="poe_enabled" {% if port.poe_enabled %}checked{% endif %}> PoE enabled</label>
+  <div class="row wrap">
+    <button class="btn btn-primary" type="submit">Speichern</button>
+    <button class="btn btn-secondary" type="button" data-close-modal>Verwerfen</button>
+  </div>
+</form>

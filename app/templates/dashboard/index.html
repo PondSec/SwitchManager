@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<section class="stats-grid">
+  <article class="card stat"><p class="muted">Switches gesamt</p><h2>{{ stats.devices_total }}</h2></article>
+  <article class="card stat"><p class="muted">Online</p><h2 class="ok">{{ stats.devices_online }}</h2></article>
+  <article class="card stat"><p class="muted">Offline</p><h2 class="critical">{{ stats.devices_offline }}</h2></article>
+  <article class="card stat"><p class="muted">Aktive Ports</p><h2>{{ stats.ports_active }} / {{ stats.ports_total }}</h2></article>
+  <article class="card stat"><p class="muted">Warnungen</p><h2 class="warn">{{ stats.warnings }}</h2></article>
+  <article class="card stat"><p class="muted">VLANs</p><h2>{{ stats.vlans }}</h2></article>
+</section>
+
+<section class="two-col">
+  <article class="card">
+    <div class="row"><h2>Problematische Geräte</h2><a class="btn btn-secondary" href="{{ url_for('devices.index') }}">Alle öffnen</a></div>
+    <table class="table">
+      <tr><th>Gerät</th><th>Status</th><th>Ports up</th><th>Warnungen</th><th></th></tr>
+      {% for item in problematic %}
+      <tr>
+        <td>{{ item.device.name }}<div class="muted">{{ item.device.host }}</div></td>
+        <td><span class="badge {{ item.device.status }}">{{ item.device.status }}</span></td>
+        <td>{{ item.ports_up }} / {{ item.ports_total }}</td>
+        <td>{{ item.warnings }}</td>
+        <td><a class="btn btn-secondary" href="{{ url_for('devices.detail', device_id=item.device.id) }}">Details</a></td>
+      </tr>
+      {% endfor %}
+    </table>
+  </article>
+
+  <article class="card">
+    <h2>Letzte Events</h2>
+    <table class="table">
+      <tr><th>Zeit</th><th>Akteur</th><th>Aktion</th><th>Ergebnis</th></tr>
+      {% for item in recent[:10] %}
+      <tr>
+        <td>{{ item.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+        <td>{{ item.username }}</td>
+        <td>{{ item.action }}</td>
+        <td><span class="badge {{ item.result }}">{{ item.result }}</span></td>
+      </tr>
+      {% endfor %}
+    </table>
+  </article>
+</section>
+{% endblock %}
