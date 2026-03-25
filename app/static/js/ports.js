@@ -1,3 +1,7 @@
+if (window.lucide) {
+  window.lucide.createIcons();
+}
+
 const modal = document.getElementById('modal');
 const modalContent = document.getElementById('modal-content');
 

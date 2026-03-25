@@ -42,8 +42,8 @@
     <div class="frontpanel" aria-label="Switch ports">
       {% for port in ports %}
       <button class="port {% if port.link_state == 'up' %}up{% else %}down{% endif %}{% if port.poe_enabled %} poe{% endif %}" data-port-id="{{ port.id }}" title="Port {{ port.port_number }}">
-        {% if port.poe_enabled %}<span class="port-icon port-icon-poe">⚡</span>{% endif %}
-        {% if port.link_state == 'up' %}<span class="port-icon port-icon-link">↗</span>{% endif %}
+        {% if port.poe_enabled %}<i data-lucide="zap" class="port-icon port-icon-poe" aria-hidden="true"></i>{% endif %}
+        {% if port.link_state == 'up' %}<i data-lucide="arrow-up-right" class="port-icon port-icon-link" aria-hidden="true"></i>{% endif %}
         <span class="port-number">{{ port.port_number }}</span>
       </button>
       {% endfor %}
