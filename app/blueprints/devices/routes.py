@@ -3,7 +3,7 @@ from flask_login import current_user, login_required
 
 from app.extensions import db
 from app.forms.device_forms import DeviceForm
-from app.models.models import Device
+from app.models.models import AuditLog, Device, NetworkProfile, Port, VLAN
 from app.services.audit_service import write_audit
 from app.utils.device_context import set_selected_device
 from app.utils.driver_factory import get_driver
@@ -14,7 +14,33 @@ bp = Blueprint("devices", __name__, url_prefix="/devices")
 @bp.route("/")
 @login_required
 def index():
-    return render_template("devices/index.html", devices=Device.query.order_by(Device.name.asc()).all())
+    devices = Device.query.order_by(Device.name.asc()).all()
+    filters = {
+        "q": (request.args.get("q") or "").strip().lower(),
+        "status": (request.args.get("status") or "all").lower(),
+        "sort": (request.args.get("sort") or "name").lower(),
+        "view": (request.args.get("view") or "table").lower(),
+    }
+
+    filtered = []
+    for device in devices:
+        if filters["q"] and filters["q"] not in f"{device.name} {device.host} {device.model}".lower():
+            continue
+        if filters["status"] != "all" and device.status != filters["status"]:
+            continue
+        filtered.append(device)
+
+    if filters["sort"] == "status":
+        filtered.sort(key=lambda d: (d.status, d.name.lower()))
+    elif filters["sort"] == "model":
+        filtered.sort(key=lambda d: (d.model.lower(), d.name.lower()))
+    elif filters["sort"] == "ip":
+        filtered.sort(key=lambda d: d.host)
+    else:
+        filtered.sort(key=lambda d: d.name.lower())
+
+    favorites = filtered[:5]
+    return render_template("devices/index.html", devices=filtered, filters=filters, favorites=favorites)
 
 
 @bp.route("/new", methods=["GET", "POST"])
@@ -35,8 +61,94 @@ def create():
         db.session.commit()
         write_audit(current_user.username, "device_create", device.name, f"Device {device.host} erstellt", "success")
         flash("Gerät gespeichert.", "success")
+        return redirect(url_for("devices.detail", device_id=device.id))
+    return render_template("devices/form.html", form=form, title="Switch hinzufügen")
+
+
+@bp.route("/<int:device_id>")
+@login_required
+def detail(device_id: int):
+    device = Device.query.get_or_404(device_id)
+    set_selected_device(device.id)
+
+    ports = Port.query.filter_by(device_id=device.id).order_by(Port.port_number.asc()).all()
+    vlans = VLAN.query.filter_by(device_id=device.id).order_by(VLAN.vlan_id.asc()).all()
+    profiles = NetworkProfile.query.order_by(NetworkProfile.name.asc()).all()
+    events = AuditLog.query.filter(AuditLog.target == device.name).order_by(AuditLog.created_at.desc()).limit(100).all()
+
+    stats = {
+        "port_total": len(ports),
+        "port_up": len([p for p in ports if p.link_state == "up" and p.admin_enabled]),
+        "port_down": len([p for p in ports if p.link_state == "down" and p.admin_enabled]),
+        "port_disabled": len([p for p in ports if not p.admin_enabled]),
+        "poe_on": len([p for p in ports if p.poe_enabled]),
+    }
+    return render_template(
+        "devices/detail.html",
+        device=device,
+        ports=ports,
+        vlans=vlans,
+        profiles=profiles,
+        events=events,
+        stats=stats,
+    )
+
+
+@bp.route("/<int:device_id>/port/<int:port_id>/update", methods=["POST"])
+@login_required
+def update_port(device_id: int, port_id: int):
+    device = Device.query.get_or_404(device_id)
+    port = Port.query.filter_by(device_id=device.id, id=port_id).first_or_404()
+
+    port.alias = request.form.get("alias", port.alias)
+    port.vlan_id = int(request.form.get("vlan_id", port.vlan_id))
+    port.vlan_mode = request.form.get("vlan_mode", port.vlan_mode)
+    port.admin_enabled = request.form.get("admin_enabled") == "on"
+    port.poe_enabled = request.form.get("poe_enabled") == "on"
+    db.session.commit()
+
+    write_audit(
+        current_user.username,
+        "port_update",
+        device.name,
+        f"Port {port.port_number}: VLAN {port.vlan_id}/{port.vlan_mode}, admin={port.admin_enabled}, poe={port.poe_enabled}",
+        "success",
+    )
+    flash(f"Port {port.port_number} aktualisiert.", "success")
+    return redirect(url_for("devices.detail", device_id=device.id, tab="ports", selected_port=port.id))
+
+
+@bp.route("/<int:device_id>/action/<string:action>", methods=["POST"])
+@login_required
+def action(device_id: int, action: str):
+    device = Device.query.get_or_404(device_id)
+
+    if action == "sync":
+        driver = get_driver(device)
+        try:
+            driver.connect()
+            device.status = "online"
+            db.session.commit()
+            write_audit(current_user.username, "device_sync", device.name, "Synchronisierung erfolgreich", "success")
+            flash("Synchronisierung erfolgreich.", "success")
+        except Exception as exc:  # noqa: BLE001
+            device.status = "offline"
+            db.session.commit()
+            write_audit(current_user.username, "device_sync", device.name, "Synchronisierung fehlgeschlagen", "failed", str(exc))
+            flash(f"Synchronisierung fehlgeschlagen: {exc}", "error")
+        finally:
+            driver.close()
+    elif action == "reconnect":
+        return redirect(url_for("devices.test_connection", device_id=device.id))
+    elif action == "remove":
+        name = device.name
+        db.session.delete(device)
+        db.session.commit()
+        write_audit(current_user.username, "device_delete", name, "Gerät entfernt", "success")
+        flash("Gerät entfernt.", "success")
         return redirect(url_for("devices.index"))
-    return render_template("devices/form.html", form=form, title="Gerät hinzufügen")
+
+    return redirect(url_for("devices.detail", device_id=device.id))
 
 
 @bp.route("/<int:device_id>/edit", methods=["GET", "POST"])
@@ -49,7 +161,7 @@ def edit(device_id: int):
         db.session.commit()
         write_audit(current_user.username, "device_edit", device.name, "Gerät bearbeitet", "success")
         flash("Gerät aktualisiert.", "success")
-        return redirect(url_for("devices.index"))
+        return redirect(url_for("devices.detail", device_id=device.id))
     return render_template("devices/form.html", form=form, title=f"Gerät bearbeiten: {device.name}")
 
 

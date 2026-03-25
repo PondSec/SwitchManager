@@ -1,0 +1,99 @@
+{% extends 'base.html' %}
+{% block title %}{{ device.name }}{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="row row-space wrap">
+    <div>
+      <h2>{{ device.name }}</h2>
+      <p class="muted">{{ device.model }} · {{ device.host }} · Firmware {{ device.firmware }}</p>
+      <div class="row wrap">
+        <span class="badge {{ device.status }}">{{ device.status }}</span>
+        <span class="badge">Driver {{ device.driver_type }}</span>
+        <span class="badge">Mgmt {{ device.mgmt_ip }}</span>
+      </div>
+    </div>
+    <div class="row wrap">
+      <form method="post" action="{{ url_for('devices.action', device_id=device.id, action='sync') }}">{{ csrf_token() }}<button class="btn btn-secondary">Synchronisieren</button></form>
+      <form method="post" action="{{ url_for('devices.action', device_id=device.id, action='reconnect') }}">{{ csrf_token() }}<button class="btn btn-secondary">Reconnect</button></form>
+      <a class="btn btn-secondary" href="{{ url_for('devices.edit', device_id=device.id) }}">Bearbeiten</a>
+      <form method="post" action="{{ url_for('devices.action', device_id=device.id, action='remove') }}" data-confirm="Gerät wirklich entfernen?">{{ csrf_token() }}<button class="btn btn-danger">Entfernen</button></form>
+    </div>
+  </div>
+</section>
+
+<section class="stats-grid">
+  <article class="card stat"><p class="muted">Aktive Ports</p><h3 class="ok">{{ stats.port_up }}</h3></article>
+  <article class="card stat"><p class="muted">Down Ports</p><h3 class="warn">{{ stats.port_down }}</h3></article>
+  <article class="card stat"><p class="muted">Disabled</p><h3>{{ stats.port_disabled }}</h3></article>
+  <article class="card stat"><p class="muted">PoE aktiv</p><h3>{{ stats.poe_on }}</h3></article>
+</section>
+
+<section class="card">
+  <div class="tabs">
+    <button class="tab active" data-tab="tab-ports">Ports</button>
+    <button class="tab" data-tab="tab-vlans">VLANs / Netzwerke</button>
+    <button class="tab" data-tab="tab-events">Ereignisse / Logs</button>
+    <button class="tab" data-tab="tab-settings">Einstellungen</button>
+    <button class="tab" data-tab="tab-maint">Wartung</button>
+  </div>
+
+  <div id="tab-ports" class="tab-content active">
+    <h3>Port-Management</h3>
+    <div class="frontpanel">
+      {% for port in ports %}
+      <button class="port {% if port.link_state == 'up' %}up{% else %}down{% endif %}" data-port-id="{{ port.id }}">{{ port.port_number }}</button>
+      {% endfor %}
+    </div>
+    <table class="table compact">
+      <tr><th>Port</th><th>Status</th><th>Speed</th><th>Duplex</th><th>PoE</th><th>VLAN</th><th>Alias</th><th>Aktion</th></tr>
+      {% for p in ports %}
+      <tr>
+        <td>{{ p.port_number }}</td>
+        <td><span class="badge {{ 'up' if p.link_state == 'up' else 'down' }}">{{ p.link_state }}</span></td>
+        <td>{{ p.speed }}</td>
+        <td>{{ p.duplex }}</td>
+        <td>{{ 'on' if p.poe_enabled else 'off' }}</td>
+        <td>{{ p.vlan_mode }}/{{ p.vlan_id }}</td>
+        <td>{{ p.alias or '-' }}</td>
+        <td><button class="btn btn-secondary port-edit-btn" data-port-id="{{ p.id }}">Bearbeiten</button></td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <div id="tab-vlans" class="tab-content">
+    <div class="row row-space"><h3>VLANs</h3><a class="btn btn-primary" href="{{ url_for('vlans.index') }}">VLAN anlegen</a></div>
+    <table class="table"><tr><th>VLAN ID</th><th>Name</th></tr>{% for v in vlans %}<tr><td>{{ v.vlan_id }}</td><td>{{ v.name }}</td></tr>{% endfor %}</table>
+    <h4>Port-Profile</h4>
+    <table class="table"><tr><th>Name</th><th>Zweck</th><th>VLAN</th><th>DHCP</th></tr>{% for p in profiles %}<tr><td>{{ p.name }}</td><td>{{ p.purpose }}</td><td>{{ p.vlan_id }}</td><td>{{ 'on' if p.dhcp_enabled else 'off' }}</td></tr>{% endfor %}</table>
+  </div>
+
+  <div id="tab-events" class="tab-content">
+    <h3>Device Events</h3>
+    <table class="table">
+      <tr><th>Zeit</th><th>Benutzer</th><th>Aktion</th><th>Ergebnis</th><th>Details</th></tr>
+      {% for e in events %}
+      <tr><td>{{ e.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td><td>{{ e.username }}</td><td>{{ e.action }}</td><td><span class="badge {{ e.result }}">{{ e.result }}</span></td><td>{{ e.details }}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <div id="tab-settings" class="tab-content">
+    <h3>Switch-Einstellungen</h3>
+    <p class="muted">Host, SSH-Zugang und Treiberparameter werden in der Geräteverwaltung gepflegt.</p>
+    <a class="btn btn-secondary" href="{{ url_for('devices.edit', device_id=device.id) }}">Gerätekonfiguration öffnen</a>
+  </div>
+
+  <div id="tab-maint" class="tab-content">
+    <h3>Wartung / Aktionen</h3>
+    <div class="row wrap">
+      <form method="post" action="{{ url_for('system.action', action='save') }}">{{ csrf_token() }}<input type="hidden" name="dry_run" value="1"><button class="btn btn-secondary">Config Save (Dry-Run)</button></form>
+      <form method="post" action="{{ url_for('system.action', action='backup') }}">{{ csrf_token() }}<input type="hidden" name="dry_run" value="1"><button class="btn btn-secondary">Backup (Dry-Run)</button></form>
+      <form method="post" action="{{ url_for('system.action', action='reboot') }}" data-confirm="Reboot dry-run ausführen?">{{ csrf_token() }}<input type="hidden" name="dry_run" value="1"><button class="btn btn-danger">Reboot (Dry-Run)</button></form>
+    </div>
+  </div>
+</section>
+
+<div id="modal" class="modal hidden"><div class="modal-content" id="modal-content"></div></div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/ports.js') }}"></script>{% endblock %}

@@ -1,19 +1,35 @@
 const modal = document.getElementById('modal');
 const modalContent = document.getElementById('modal-content');
 
-document.querySelectorAll('.port').forEach((button) => {
-  button.addEventListener('click', async () => {
+const openPortDrawer = async (portId) => {
+  if (!modal || !modalContent) return;
+  const res = await fetch(`/ports/${portId}`);
+  modalContent.innerHTML = await res.text();
+  modal.classList.remove('hidden');
+  modalContent.querySelector('[data-close-modal]')?.addEventListener('click', () => modal.classList.add('hidden'));
+};
+
+document.querySelectorAll('.port, .port-edit-btn').forEach((button) => {
+  button.addEventListener('click', () => {
     const id = button.dataset.portId;
-    const res = await fetch(`/ports/${id}`);
-    modalContent.innerHTML = await res.text();
-    modal.classList.remove('hidden');
-    modalContent.querySelector('[data-close-modal]')?.addEventListener('click', () => modal.classList.add('hidden'));
+    if (id) openPortDrawer(id);
   });
 });
 
-setInterval(async () => {
-  const wrapper = document.getElementById('port-table-wrapper');
-  if (!wrapper) return;
-  const res = await fetch('/ports/refresh');
-  wrapper.innerHTML = await res.text();
-}, 15000);
+if (modal) {
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) {
+      modal.classList.add('hidden');
+    }
+  });
+}
+
+const portTableWrapper = document.getElementById('port-table-wrapper');
+if (portTableWrapper) {
+  setInterval(async () => {
+    const res = await fetch('/ports/refresh');
+    if (res.ok) {
+      portTableWrapper.innerHTML = await res.text();
+    }
+  }, 15000);
+}
