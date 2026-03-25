@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}Netzwerkprofil{% endblock %}
+{% block content %}
+<div class="network-layout">
+  <aside class="network-menu card">
+    <h3>SETTINGS</h3>
+    <a class="active">Site</a><a>Wireless Networks</a><a class="active-2">Networks</a><a>Routing & Firewall</a>
+    <a>Threat Management</a><a>DPI</a><a>Guest Control</a><a>Profiles</a><a>Services</a><a>User Groups</a>
+    <hr><a>Controller</a><a>User Interface</a><a>Maintenance</a><a>Backup</a>
+  </aside>
+
+  <section class="card">
+    <div class="row"><h2>EDIT NETWORK</h2>{% if profile %}<span class="badge">ID {{ profile.id }}</span>{% endif %}</div>
+    <form method="post" class="advanced-grid">
+      {{ form.hidden_tag() }}
+      <div class="field"><label>{{ form.name.label }}</label>{{ form.name(class_='input') }}</div>
+      <div class="field"><label>{{ form.purpose.label }}</label>{{ form.purpose(class_='input') }}</div>
+      <div class="field"><label>{{ form.vlan_id.label }}</label>{{ form.vlan_id(class_='input') }}</div>
+      <div class="field"><label>{{ form.gateway_ip.label }}</label>{{ form.gateway_ip(class_='input') }}</div>
+      <div class="field"><label>{{ form.subnet_mask.label }}</label>{{ form.subnet_mask(class_='input') }}</div>
+
+      <div class="section-title">DHCP</div>
+      <label class="toggle-line">{{ form.dhcp_enabled() }} <span>DHCP Server aktivieren</span></label>
+      <div class="field"><label>{{ form.dhcp_start.label }}</label>{{ form.dhcp_start(class_='input') }}</div>
+      <div class="field"><label>{{ form.dhcp_end.label }}</label>{{ form.dhcp_end(class_='input') }}</div>
+      <div class="field"><label>{{ form.dhcp_lease_time.label }}</label>{{ form.dhcp_lease_time(class_='input') }}</div>
+      <div class="field"><label>{{ form.dns_primary.label }}</label>{{ form.dns_primary(class_='input') }}</div>
+      <div class="field"><label>{{ form.dns_secondary.label }}</label>{{ form.dns_secondary(class_='input') }}</div>
+
+      <div class="section-title">ADVANCED OPTIONS</div>
+      <label class="toggle-line">{{ form.igmp_snooping() }} <span>IGMP Snooping</span></label>
+      <label class="toggle-line">{{ form.dhcp_guarding() }} <span>DHCP Guarding</span></label>
+      <label class="toggle-line">{{ form.upnp_lan() }} <span>UPnP LAN</span></label>
+      <label class="toggle-line">{{ form.multicast_dns() }} <span>mDNS Gateway</span></label>
+      {{ form.submit(class_='btn btn-primary') }}
+    </form>
+
+    {% if profile %}
+    <div class="row" style="margin-top:12px;">
+      <form method="post" action="{{ url_for('networks.apply', profile_id=profile.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="dry_run" value="1"><button class="btn btn-secondary">Dry Run anwenden</button></form>
+      <form method="post" action="{{ url_for('networks.apply', profile_id=profile.id) }}" data-confirm="Profil wirklich auf Gerät anwenden?"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="dry_run" value="0"><button class="btn btn-danger">Scharf anwenden</button></form>
+    </div>
+    {% endif %}
+
+    {% if preview %}<h3>Konfigurationsvorschau</h3><pre class="code-block">{{ preview|join('\n') }}</pre>{% endif %}
+  </section>
+</div>
+{% endblock %}

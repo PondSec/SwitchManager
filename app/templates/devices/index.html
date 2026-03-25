@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="hero-grid">
+  <article class="hero-card card">
+    <div>
+      <p class="eyebrow">Inventory</p>
+      <h2>Geräteübersicht</h2>
+      <p class="muted">Von hier aus steuerst du den Fleet, springst in das Device Center und bereitest die Plattform für weitere Gerätetypen wie Router und Access Points vor.</p>
+    </div>
+    <div class="row wrap" style="margin-top: 1rem;">
+      <a class="btn btn-primary" href="{{ url_for('devices.create') }}">Gerät hinzufügen</a>
+      <a class="btn btn-secondary" href="{{ url_for('observe.index') }}">Observe öffnen</a>
+    </div>
+  </article>
+
+  <article class="card spotlight-card">
+    <p class="eyebrow">Favorites</p>
+    <div class="fleet-stack">
+      {% for d in favorites %}
+      <a class="fleet-card" href="{{ url_for('observe.device', device_id=d.id) }}">
+        <div class="row row-space">
+          <strong>{{ d.name }}</strong>
+          <span class="badge {{ d.status }}">{{ d.status }}</span>
+        </div>
+        <p>{{ d.model }}</p>
+        <small>{{ d.host }}</small>
+      </a>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+
+<section class="card">
+  <form method="get" class="toolbar">
+    <input class="input" type="search" name="q" value="{{ filters.q }}" placeholder="Name, IP, Modell suchen">
+    <select class="input" name="status">
+      <option value="all" {% if filters.status == 'all' %}selected{% endif %}>Status: Alle</option>
+      <option value="online" {% if filters.status == 'online' %}selected{% endif %}>Online</option>
+      <option value="offline" {% if filters.status == 'offline' %}selected{% endif %}>Offline</option>
+      <option value="unknown" {% if filters.status == 'unknown' %}selected{% endif %}>Unknown</option>
+    </select>
+    <select class="input" name="sort">
+      <option value="name" {% if filters.sort == 'name' %}selected{% endif %}>Sortierung: Name</option>
+      <option value="status" {% if filters.sort == 'status' %}selected{% endif %}>Status</option>
+      <option value="model" {% if filters.sort == 'model' %}selected{% endif %}>Modell</option>
+      <option value="ip" {% if filters.sort == 'ip' %}selected{% endif %}>IP</option>
+    </select>
+    <select class="input" name="view">
+      <option value="table" {% if filters.view == 'table' %}selected{% endif %}>Tabellenansicht</option>
+      <option value="cards" {% if filters.view == 'cards' %}selected{% endif %}>Kartenansicht</option>
+    </select>
+    <button class="btn btn-secondary">Anwenden</button>
+  </form>
+</section>
+
+{% if filters.view == 'cards' %}
+<section class="device-wall">
+  {% for item in device_cards %}
+  {% set d = item.device %}
+  <article class="card device-card device-card-pro">
+    <div class="row row-space">
+      <h3>{{ d.name }}</h3>
+      <span class="badge {{ d.status }}">{{ d.status }}</span>
+    </div>
+    <p class="muted">{{ d.model }} · {{ d.host }}:{{ d.ssh_port }}</p>
+    <div class="inline-metrics">
+      <div><span>Ports</span><strong>{{ item.ports_up }} / {{ item.ports_total }}</strong></div>
+      <div><span>Disabled</span><strong>{{ item.ports_disabled }}</strong></div>
+      <div><span>Warnings</span><strong>{{ item.warnings }}</strong></div>
+    </div>
+    <div class="row wrap">
+      <a class="btn btn-primary" href="{{ url_for('observe.device', device_id=d.id) }}">Open Center</a>
+      <a class="btn btn-secondary" href="{{ url_for('devices.detail', device_id=d.id) }}">Details</a>
+      <form method="post" action="{{ url_for('devices.test_connection', device_id=d.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-secondary">Verbindung testen</button></form>
+      <a class="btn btn-secondary" href="{{ url_for('devices.edit', device_id=d.id) }}">Bearbeiten</a>
+    </div>
+  </article>
+  {% endfor %}
+</section>
+{% else %}
+<section class="card">
+  <table class="table">
+    <tr><th>Name</th><th>Status</th><th>Modell</th><th>IP</th><th>Fabric</th><th>Zuletzt gesehen</th><th>Aktionen</th></tr>
+    {% for item in device_cards %}
+    {% set d = item.device %}
+    <tr>
+      <td>{{ d.name }}</td>
+      <td><span class="badge {{ d.status }}">{{ d.status }}</span></td>
+      <td>{{ d.model }}</td>
+      <td>{{ d.host }}</td>
+      <td>{{ item.ports_up }} / {{ item.ports_total }} up · {{ item.warnings }} Hinweise</td>
+      <td>{{ d.last_seen_at.strftime('%Y-%m-%d %H:%M') if d.last_seen_at else '-' }}</td>
+      <td class="row wrap">
+        <a class="btn btn-primary" href="{{ url_for('observe.device', device_id=d.id) }}">Center</a>
+        <a class="btn btn-secondary" href="{{ url_for('devices.detail', device_id=d.id) }}">Details</a>
+        <form method="post" action="{{ url_for('devices.test_connection', device_id=d.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-secondary">Test</button></form>
+        <a class="btn btn-secondary" href="{{ url_for('devices.edit', device_id=d.id) }}">Edit</a>
+        <form method="post" action="{{ url_for('devices.delete', device_id=d.id) }}" data-confirm="Gerät wirklich löschen?"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-danger">Delete</button></form>
+      </td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+{% endif %}
+{% endblock %}

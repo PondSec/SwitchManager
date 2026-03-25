@@ -1,0 +1,114 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<section class="hero-grid">
+  <article class="hero-card card">
+    <div>
+      <p class="eyebrow">Fleet Overview</p>
+      <h2>Ein zentrales Control Center für Netzwerkgeräte</h2>
+      <p class="muted">Die Oberfläche ist jetzt auf schnelle Orientierung, Device-Fokus und spätere Erweiterung auf Router, Access Points und weitere Hersteller ausgelegt.</p>
+    </div>
+    <div class="row wrap" style="margin-top: 1rem;">
+      <a class="btn btn-primary" href="{{ url_for('devices.index') }}">Geräte verwalten</a>
+      <a class="btn btn-secondary" href="{{ url_for('observe.index') }}">Observe öffnen</a>
+    </div>
+  </article>
+
+  <article class="card spotlight-card">
+    <p class="eyebrow">Aktives Gerät</p>
+    {% if selected_device and selected_summary %}
+    <h3>{{ selected_device.name }}</h3>
+    <p class="muted">{{ selected_device.model }} · {{ selected_device.host }}</p>
+    <div class="inline-metrics" style="margin-top: 1rem;">
+      <div><span>Status</span><strong>{{ selected_device.status }}</strong></div>
+      <div><span>Ports Up</span><strong>{{ selected_summary.ports_up }} / {{ selected_summary.ports_total }}</strong></div>
+      <div><span>Warnungen</span><strong>{{ selected_summary.warnings }}</strong></div>
+    </div>
+    <div class="row wrap" style="margin-top: 1rem;">
+      <a class="btn btn-primary" href="{{ url_for('observe.device', device_id=selected_device.id) }}">Device Center</a>
+      <a class="btn btn-secondary" href="{{ url_for('devices.advanced', device_id=selected_device.id) }}">Config</a>
+    </div>
+    {% else %}
+    <p class="muted">Noch kein Gerät ausgewählt.</p>
+    {% endif %}
+  </article>
+</section>
+
+<section class="metric-grid">
+  <article class="metric-card card"><p>Devices</p><h3>{{ stats.devices_total }}</h3></article>
+  <article class="metric-card card"><p>Online</p><h3 class="ok">{{ stats.devices_online }}</h3></article>
+  <article class="metric-card card"><p>Offline</p><h3 class="critical">{{ stats.devices_offline }}</h3></article>
+  <article class="metric-card card"><p>Active Ports</p><h3>{{ stats.ports_active }} / {{ stats.ports_total }}</h3></article>
+  <article class="metric-card card"><p>Warnings</p><h3 class="warn">{{ stats.warnings }}</h3></article>
+  <article class="metric-card card"><p>VLANs</p><h3>{{ stats.vlans }}</h3></article>
+</section>
+
+<section class="workspace-columns wide">
+  <article class="card">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Health</p>
+        <h3>Geräte mit Aufmerksamkeit</h3>
+      </div>
+      <a class="btn btn-secondary" href="{{ url_for('devices.index') }}">Alle Geräte</a>
+    </div>
+    <div class="fleet-health-list">
+      {% for item in problematic %}
+      <a class="health-item" href="{{ url_for('observe.device', device_id=item.device.id) }}">
+        <div>
+          <strong>{{ item.device.name }}</strong>
+          <p>{{ item.device.host }} · {{ item.device.model }}</p>
+        </div>
+        <div class="health-meta">
+          <span class="badge {{ item.device.status }}">{{ item.device.status }}</span>
+          <small>{{ item.ports_up }} / {{ item.ports_total }} up</small>
+          <small>{{ item.warnings }} Hinweise</small>
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="card">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Vendors</p>
+        <h3>Plattform-Verteilung</h3>
+      </div>
+    </div>
+    <div class="segment-stack">
+      {% for vendor, count in vendor_breakdown.items() %}
+      <div class="segment-card">
+        <div class="row row-space">
+          <strong>{{ vendor }}</strong>
+          <span class="tiny-pill">{{ count }}</span>
+        </div>
+        <p>{{ count }} Gerät{{ '' if count == 1 else 'e' }} aktuell im Fleet.</p>
+      </div>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+
+<section class="card">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">Activity</p>
+      <h3>Letzte Aktionen</h3>
+    </div>
+    <a class="btn btn-secondary" href="{{ url_for('audit.index') }}">Volles Audit</a>
+  </div>
+  <table class="table">
+    <tr><th>Zeit</th><th>Akteur</th><th>Aktion</th><th>Ergebnis</th><th>Ziel</th></tr>
+    {% for item in recent[:12] %}
+    <tr>
+      <td>{{ item.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+      <td>{{ item.username }}</td>
+      <td>{{ item.action }}</td>
+      <td><span class="badge {{ item.result }}">{{ item.result }}</span></td>
+      <td>{{ item.target }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+</section>
+{% endblock %}

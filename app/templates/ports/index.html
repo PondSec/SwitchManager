@@ -1,0 +1,279 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="hero-grid">
+  <article class="hero-card card">
+    <div>
+      <p class="eyebrow">Ports</p>
+      <h2>Klickbare Port-Steuerung mit Live-Posture</h2>
+      <p class="muted">Die Matrix ist auf Bulk-Änderungen, schnelle Orientierung und lesbare Live-Daten ausgelegt. Port-Zustände, VLAN-Zuordnung, PoE und Traffic kommen direkt in den Workspace.</p>
+    </div>
+    <div class="inline-metrics" style="margin-top: 1rem;">
+      <div><span>Ports</span><strong>{{ snapshot.summary.ports_total if snapshot else ports|length }}</strong></div>
+      <div><span>Up</span><strong>{{ snapshot.summary.ports_up if snapshot else 0 }}</strong></div>
+      <div><span>Clients</span><strong>{{ snapshot.summary.clients_total if snapshot else 0 }}</strong></div>
+    </div>
+  </article>
+
+  <article class="card spotlight-card">
+    <p class="eyebrow">Live Highlights</p>
+    {% if snapshot and snapshot.traffic_rows %}
+    <div class="traffic-list">
+      {% for row in snapshot.traffic_rows[:4] %}
+      <div class="traffic-row">
+        <div>
+          <strong>{{ row.name }}</strong>
+          <p class="muted">{{ row.description or row.link_state }}</p>
+        </div>
+        <div class="traffic-meta">
+          <span>{{ row.total_human }}</span>
+          <span>{{ row.errors }} Errors</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="muted">Noch keine Live-Trafficdaten geladen.</p>
+    {% endif %}
+  </article>
+</section>
+
+{% if snapshot_warning %}
+<section class="card notice-card">
+  <h3>Hinweis</h3>
+  <p class="muted">{{ snapshot_warning }}</p>
+</section>
+{% endif %}
+
+<section class="card ports-workspace" id="ports-workspace" data-ports='{{ ports_payload|tojson }}' data-vlans='{{ vlan_options|tojson }}' data-csrf-token="{{ csrf_token() }}">
+  <header class="ports-header unifi-like">
+    <div>
+      <p class="eyebrow">Port Workspace</p>
+      <h3>Bulk-Konfiguration und Frontpanel in einer Ansicht</h3>
+    </div>
+    <div class="ports-actions">
+      <button type="button" class="btn btn-secondary" data-action="deselect-all">Auswahl aufheben</button>
+      <button type="button" class="btn btn-primary" data-action="select-all">Alle wählen</button>
+    </div>
+  </header>
+
+  <div class="ports-tabs" role="tablist" aria-label="Port navigation">
+    <button type="button" class="ports-tab active" data-view="ports" aria-selected="true">Ports</button>
+    <button type="button" class="ports-tab" data-view="insights" aria-selected="false">Insights</button>
+    <button type="button" class="ports-tab" data-view="vlans" aria-selected="false">VLANs</button>
+  </div>
+
+  <div class="ports-feedback config-info" id="ports-feedback" hidden></div>
+
+  <section class="ports-view-panel" data-view-panel="ports">
+    <div class="ports-rack" id="ports-rack" aria-label="Switch ports"></div>
+
+    <div class="ports-filters" id="ports-filters">
+      <label><input type="checkbox" data-filter="all" checked> Alle</label>
+      <label><input type="checkbox" data-filter="in_use"> In Nutzung</label>
+      <label><input type="checkbox" data-filter="available"> Frei</label>
+      <label><input type="checkbox" data-filter="no_poe"> Ohne PoE</label>
+      <label><input type="checkbox" data-filter="poe_plus"> PoE+</label>
+      <label><input type="checkbox" data-filter="fe"> FE</label>
+      <label><input type="checkbox" data-filter="gbe"> GbE</label>
+      <label><input type="checkbox" data-filter="2_5gbe"> 2.5 GbE</label>
+      <label><input type="checkbox" data-filter="10gbe"> 10 GbE</label>
+      <label><input type="checkbox" data-filter="sfp_plus"> SFP+</label>
+    </div>
+
+    <div class="ports-selected-line" id="ports-selected-line">Keine Ports ausgewählt</div>
+
+    <section class="port-config-panel" id="port-config-panel" hidden>
+      <div class="config-info" id="config-info"></div>
+      <form id="multi-port-form" class="port-config-form">
+        <div class="field-row">
+          <label>Port Status</label>
+          <div class="option-group" data-field="status">
+            <label><input type="radio" name="status" value="active"> Aktiv</label>
+            <label><input type="radio" name="status" value="disabled"> Deaktiviert</label>
+            <label><input type="radio" name="status" value="restricted"> Eingeschränkt</label>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <label for="vlan-native">Native VLAN / Netzwerk</label>
+          <select id="vlan-native" name="vlanNative" class="input"></select>
+        </div>
+
+        <div class="field-row">
+          <label>Tagged VLAN Management</label>
+          <div class="option-group" data-field="taggedPolicy">
+            <label><input type="radio" name="taggedPolicy" value="allow_all"> Alle zulassen</label>
+            <label><input type="radio" name="taggedPolicy" value="block_all"> Alle blockieren</label>
+            <label><input type="radio" name="taggedPolicy" value="custom"> Benutzerdefiniert</label>
+          </div>
+        </div>
+
+        <div class="field-row" id="custom-tagged-row" hidden>
+          <label for="tagged-vlans">Custom Tagged VLANs</label>
+          <select id="tagged-vlans" class="input" name="vlanTagged" multiple size="5"></select>
+        </div>
+
+        <div class="field-row">
+          <label>PoE</label>
+          <div class="option-group" data-field="poeMode">
+            <label><input type="radio" name="poeMode" value="off"> Aus</label>
+            <label><input type="radio" name="poeMode" value="poe_plus"> PoE+</label>
+          </div>
+        </div>
+
+        <div class="field-row">
+          <label>Advanced</label>
+          <div class="segmented" role="radiogroup" aria-label="Advanced Mode">
+            <label><input type="radio" name="profile" value="auto">Auto</label>
+            <label><input type="radio" name="profile" value="manual">Manual</label>
+          </div>
+        </div>
+
+        <div class="field-row manual-fields" id="manual-fields" hidden>
+          <label for="speed">Speed / Duplex</label>
+          <div class="split-two">
+            <select id="speed" name="speed" class="input">
+              <option value="100M">100M</option>
+              <option value="1G">1G</option>
+              <option value="2.5G">2.5G</option>
+              <option value="10G">10G</option>
+            </select>
+            <select id="duplex" name="duplex" class="input">
+              <option value="full">Full</option>
+              <option value="half">Half</option>
+            </select>
+          </div>
+        </div>
+
+        <footer class="panel-footer">
+          <button type="button" class="btn btn-secondary" id="cancel-changes">Abbrechen</button>
+          <button type="submit" class="btn btn-primary" id="apply-changes">Änderungen anwenden</button>
+        </footer>
+      </form>
+    </section>
+
+    <section class="ports-table-shell">
+      <table class="table ports-detail-table">
+        <thead>
+          <tr>
+            <th>Port</th><th>Name</th><th>Status</th><th>PoE</th><th>Speed</th>
+            <th>Netz</th><th>Verbindung</th><th>Clients</th><th>Aktivität</th><th>TX</th><th>RX</th><th>Gesamt</th>
+          </tr>
+        </thead>
+        <tbody id="ports-detail-body"></tbody>
+      </table>
+    </section>
+  </section>
+
+  <section class="ports-view-panel" data-view-panel="insights" hidden>
+    <div class="workspace-columns wide">
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Traffic</p>
+            <h3>Aktive Ports</h3>
+          </div>
+        </div>
+        {% if snapshot and snapshot.traffic_rows %}
+        <table class="table">
+          <thead>
+            <tr><th>Port</th><th>Status</th><th>RX</th><th>TX</th><th>Errors</th><th>Drops</th></tr>
+          </thead>
+          <tbody>
+            {% for row in snapshot.traffic_rows[:12] %}
+            <tr>
+              <td>{{ row.name }}</td>
+              <td>{{ row.link_state }}</td>
+              <td>{{ row.rx_human }}</td>
+              <td>{{ row.tx_human }}</td>
+              <td>{{ row.errors }}</td>
+              <td>{{ row.drops }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <p class="muted">Noch keine Traffic-Insights verfügbar.</p>
+        {% endif %}
+      </article>
+
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Discovery</p>
+            <h3>Clients & Uplinks</h3>
+          </div>
+        </div>
+        {% if snapshot and snapshot.port_cards %}
+        <div class="segment-stack">
+          {% for port in snapshot.port_cards[:12] %}
+          <div class="segment-card">
+            <div class="row row-space">
+              <strong>Port {{ port.port_number }}</strong>
+              <span class="tiny-pill">{{ port.traffic_human }}</span>
+            </div>
+            <p>{{ port.label }}</p>
+            <small>{{ port.vlan_label }}</small>
+            <div class="segment-meta">
+              <span>{{ port.client_count }} Clients</span>
+              <span>{{ port.neighbor_name or 'kein LLDP' }}</span>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <p class="muted">Noch keine Port-Insights verfügbar.</p>
+        {% endif %}
+      </article>
+    </div>
+  </section>
+
+  <section class="ports-view-panel" data-view-panel="vlans" hidden>
+    <article class="card">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Networks</p>
+          <h3>VLAN-Übersicht</h3>
+        </div>
+      </div>
+      {% if snapshot and snapshot.vlan_cards %}
+      <table class="table">
+        <thead>
+          <tr><th>VLAN</th><th>Name</th><th>Clients</th><th>Tagged</th><th>Untagged</th></tr>
+        </thead>
+        <tbody>
+          {% for vlan in snapshot.vlan_cards %}
+          <tr>
+            <td>{{ vlan.vlan_id }}</td>
+            <td>{{ vlan.name }}</td>
+            <td>{{ vlan.client_count }}</td>
+            <td>{{ vlan.tagged_ports or '-' }}</td>
+            <td>{{ vlan.untagged_ports or '-' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% elif vlan_options %}
+      <table class="table">
+        <thead>
+          <tr><th>VLAN</th><th>Name</th></tr>
+        </thead>
+        <tbody>
+          {% for vlan in vlan_options %}
+          <tr>
+            <td>{{ vlan.id }}</td>
+            <td>{{ vlan.name }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="muted">Noch keine VLAN-Daten verfügbar.</p>
+      {% endif %}
+    </article>
+  </section>
+</section>
+
+<div id="modal" class="modal hidden"><div class="modal-content" id="modal-content"></div></div>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/ports.js') }}"></script>{% endblock %}

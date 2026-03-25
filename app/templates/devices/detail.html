@@ -1,0 +1,278 @@
+{% extends 'base.html' %}
+{% block title %}{{ device.name }}{% endblock %}
+{% block content %}
+<section class="workspace-hero card device-hero">
+  <div class="workspace-hero-copy">
+    <p class="eyebrow">Device Center</p>
+    <h2>{{ device.name }}</h2>
+    <p class="muted">
+      {{ snapshot.live_info.model if snapshot and snapshot.live_info.model else device.model }}
+      · {{ device.host }}
+      · Firmware {{ snapshot.live_info.firmware if snapshot and snapshot.live_info.firmware else device.firmware }}
+    </p>
+    <div class="row wrap" style="margin-top: 1rem;">
+      <span class="badge {{ device.status }}">{{ device.status }}</span>
+      <span class="badge">Driver {{ device.driver_type }}</span>
+      <span class="badge">Mgmt {{ snapshot.live_info.mgmt_ip if snapshot and snapshot.live_info.mgmt_ip else device.mgmt_ip }}</span>
+      <span class="badge">{{ capability_catalog|length }} Konfig-Bereiche</span>
+    </div>
+  </div>
+  <div class="workspace-hero-actions">
+    <form method="post" action="{{ url_for('devices.action', device_id=device.id, action='sync') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-primary">Synchronisieren</button></form>
+    <a class="btn btn-secondary" href="{{ url_for('observe.device', device_id=device.id) }}">Observe</a>
+    <a class="btn btn-secondary" href="{{ url_for('ports.index') }}">Ports</a>
+    <a class="btn btn-secondary" href="{{ url_for('devices.live_config', device_id=device.id) }}">Live Config</a>
+    <a class="btn btn-secondary" href="{{ url_for('devices.advanced', device_id=device.id) }}">Advanced Config</a>
+    <a class="btn btn-secondary" href="{{ url_for('devices.edit', device_id=device.id) }}">Bearbeiten</a>
+    <form method="post" action="{{ url_for('devices.action', device_id=device.id, action='reconnect') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-secondary">Reconnect</button></form>
+    <form method="post" action="{{ url_for('devices.action', device_id=device.id, action='remove') }}" data-confirm="Gerät wirklich entfernen?"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-danger">Entfernen</button></form>
+  </div>
+</section>
+
+{% if snapshot_errors or (snapshot and snapshot.warnings) %}
+<section class="card notice-card">
+  <h3>Hinweise</h3>
+  <ul>
+    {% for warning in snapshot_errors %}
+    <li>{{ warning }}</li>
+    {% endfor %}
+    {% if snapshot %}
+      {% for warning in snapshot.warnings %}
+      <li>{{ warning }}</li>
+      {% endfor %}
+    {% endif %}
+  </ul>
+</section>
+{% endif %}
+
+<section class="metric-grid">
+  <article class="metric-card card"><p>Ports Up</p><h3>{{ snapshot.summary.ports_up if snapshot else stats.port_up }} / {{ snapshot.summary.ports_total if snapshot else stats.port_total }}</h3></article>
+  <article class="metric-card card"><p>Clients</p><h3>{{ snapshot.summary.clients_total if snapshot else 0 }}</h3></article>
+  <article class="metric-card card"><p>VLANs</p><h3>{{ snapshot.summary.vlans_total if snapshot else vlans|length }}</h3></article>
+  <article class="metric-card card"><p>PoE</p><h3>{{ snapshot.summary.ports_poe if snapshot else stats.poe_on }}</h3></article>
+  <article class="metric-card card"><p>Alerts</p><h3>{{ snapshot.summary.alerts_total if snapshot else stats.port_down }}</h3></article>
+  <article class="metric-card card"><p>Traffic</p><h3>{{ snapshot.summary.traffic_total if snapshot else '-' }}</h3></article>
+</section>
+
+<section class="workspace-columns wide">
+  <article class="card">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Workspace</p>
+        <h3>Kontrollflächen</h3>
+      </div>
+    </div>
+    <div class="module-grid">
+      {% for module in module_cards %}
+      <a class="module-card" href="{{ module.href }}">
+        <strong>{{ module.title }}</strong>
+        <p>{{ module.description }}</p>
+        <span class="tiny-pill">{{ module.cta }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="card">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Platform Fit</p>
+        <h3>Geräte-Posture</h3>
+      </div>
+    </div>
+    <div class="inline-metrics">
+      <div><span>Family</span><strong>{{ snapshot.summary.family if snapshot else ('Router' if device.driver_type == 'edgeos-ssh' else 'Switch') }}</strong></div>
+      <div><span>LLDP Uplinks</span><strong>{{ snapshot.summary.uplinks_total if snapshot else 0 }}</strong></div>
+      <div><span>Disabled</span><strong>{{ snapshot.summary.ports_disabled if snapshot else stats.port_disabled }}</strong></div>
+    </div>
+    <div class="capability-grid" style="margin-top: 1rem;">
+      {% for capability in capability_catalog %}
+      <div class="capability-chip capability-chip-light">{{ capability }}</div>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+
+<section class="workspace-columns wide">
+  <article class="card">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Fabric</p>
+        <h3>Port Heatmap</h3>
+      </div>
+      <a class="btn btn-secondary" href="{{ url_for('ports.index') }}">Port Workspace</a>
+    </div>
+    <div class="fabric-port-grid">
+      {% if snapshot %}
+        {% for port in snapshot.port_cards %}
+        <div class="fabric-port-card {{ port.link_state }} {{ port.health_state }}{% if not port.admin_enabled %} disabled{% endif %}">
+          <div class="row row-space">
+            <strong>Port {{ port.port_number }}</strong>
+            <span class="tiny-pill">{{ port.traffic_human }}</span>
+          </div>
+          <p>{{ port.label }}</p>
+          <small>{{ port.vlan_label }}</small>
+          <div class="fabric-port-meta">
+            <span>{{ port.speed or '-' }}</span>
+            <span>{{ port.client_count }} Clients</span>
+            <span>{{ 'PoE' if port.poe_enabled else 'No PoE' }}</span>
+          </div>
+          {% if port.neighbor_name %}
+          <div class="neighbor-pill">LLDP {{ port.neighbor_name }}</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      {% else %}
+        {% for port in ports %}
+        <div class="fabric-port-card {{ port.link_state }}{% if not port.admin_enabled %} disabled{% endif %}">
+          <div class="row row-space">
+            <strong>Port {{ port.port_number }}</strong>
+            <span class="tiny-pill">{{ port.speed or '-' }}</span>
+          </div>
+          <p>{{ port.alias or ('Port ' ~ port.port_number) }}</p>
+          <small>{{ port.vlan_mode }} / {{ port.vlan_id }}</small>
+          <div class="fabric-port-meta">
+            <span>{{ port.duplex or '-' }}</span>
+            <span>{{ 'PoE' if port.poe_enabled else 'No PoE' }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+  </article>
+
+  <article class="card">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Discovery</p>
+        <h3>Clients im Blick</h3>
+      </div>
+      <input class="input section-search" type="search" placeholder="Clients filtern" data-table-filter="device-clients">
+    </div>
+    <table class="table">
+      <thead>
+        <tr><th>Name</th><th>IP</th><th>MAC</th><th>Netz</th><th>Anschluss</th><th>Quelle</th></tr>
+      </thead>
+      <tbody data-filter-body="device-clients">
+        {% if snapshot %}
+          {% for client in snapshot.clients[:20] %}
+          <tr data-filter-row data-filter-text="{{ client.name }} {{ client.ip }} {{ client.mac }} {{ client.network }} {{ client.attachment }} {{ client.source }}">
+            <td>{{ client.name }}</td>
+            <td>{{ client.ip or '-' }}</td>
+            <td>{{ client.mac or '-' }}</td>
+            <td>{{ client.network }}</td>
+            <td>{{ client.attachment }}</td>
+            <td>{{ client.source }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr data-filter-row><td colspan="6" class="muted">Keine Live-Discovery verfügbar.</td></tr>
+        {% endif %}
+      </tbody>
+      <tbody>
+        <tr data-filter-empty="device-clients" hidden><td colspan="6" class="muted">Keine Treffer.</td></tr>
+      </tbody>
+    </table>
+  </article>
+</section>
+
+<section class="workspace-columns wide">
+  <article class="card">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Networks</p>
+        <h3>Segmente & VLANs</h3>
+      </div>
+      <a class="btn btn-secondary" href="{{ url_for('networks.index') }}">Netzwerk-Workspace</a>
+    </div>
+    <div class="segment-stack">
+      {% if snapshot %}
+        {% for vlan in snapshot.vlan_cards %}
+        <div class="segment-card">
+          <div class="row row-space">
+            <strong>{{ vlan.name }}</strong>
+            <span class="tiny-pill">{{ vlan.client_count }} Clients</span>
+          </div>
+          <p>{{ vlan.label }}</p>
+          <small>{{ vlan.address or 'ohne Layer-3-Adresse' }}</small>
+          <div class="segment-meta">
+            <span>Tagged {{ vlan.tagged_ports or '-' }}</span>
+            <span>Untagged {{ vlan.untagged_ports or '-' }}</span>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        {% for vlan in vlans %}
+        <div class="segment-card">
+          <div class="row row-space">
+            <strong>{{ vlan.name }}</strong>
+            <span class="tiny-pill">VLAN {{ vlan.vlan_id }}</span>
+          </div>
+          <p>Gespeichertes Segment</p>
+        </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+  </article>
+
+  <article class="card">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Activity</p>
+        <h3>Letzte Änderungen</h3>
+      </div>
+      <a class="btn btn-secondary" href="{{ url_for('audit.index') }}">Volles Audit</a>
+    </div>
+    <div class="event-stack">
+      {% for event in events %}
+      <div class="event-item">
+        <div class="row row-space">
+          <strong>{{ event.action }}</strong>
+          <span class="badge {{ event.result }}">{{ event.result }}</span>
+        </div>
+        <p>{{ event.details }}</p>
+        <small>{{ event.created_at.strftime('%Y-%m-%d %H:%M:%S') }} · {{ event.username }}</small>
+      </div>
+      {% endfor %}
+      {% if not events %}
+      <div class="event-item">
+        <p class="muted">Noch keine gerätespezifischen Events vorhanden.</p>
+      </div>
+      {% endif %}
+    </div>
+  </article>
+</section>
+
+<section class="card">
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">Maintenance</p>
+      <h3>Sichere Geräteaktionen</h3>
+    </div>
+    <a class="btn btn-secondary" href="{{ url_for('system.index') }}">Wartung öffnen</a>
+  </div>
+  <div class="maintenance-grid">
+    <form class="action-card" method="post" action="{{ url_for('system.action', action='save') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="dry_run" value="1">
+      <strong>Config Save</strong>
+      <p>Prüft, welche Persistenz-Schritte für die aktuelle Konfiguration nötig sind.</p>
+      <button class="btn btn-secondary">Vorschau starten</button>
+    </form>
+    <form class="action-card" method="post" action="{{ url_for('system.action', action='backup') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="dry_run" value="1">
+      <strong>Backup</strong>
+      <p>Erzeugt eine sichere Vorschau für Backup- und Export-Abläufe.</p>
+      <button class="btn btn-secondary">Backup prüfen</button>
+    </form>
+    <form class="action-card" method="post" action="{{ url_for('system.action', action='reboot') }}" data-confirm="Reboot dry-run ausführen?">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="dry_run" value="1">
+      <strong>Reboot</strong>
+      <p>Zeigt den Neustart-Ablauf im Dry-Run, bevor du produktive Aktionen startest.</p>
+      <button class="btn btn-danger">Reboot prüfen</button>
+    </form>
+  </div>
+</section>
+{% endblock %}

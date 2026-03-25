@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% block title %}Advanced Config · {{ device.name }}{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="row row-space wrap">
+    <div>
+      <h2>Advanced Config: {{ device.name }}</h2>
+      <p class="muted">{{ live_info.model or device.model }} · {{ device.host }} · Firmware {{ live_info.firmware or device.firmware }}</p>
+      <div class="row wrap" style="margin-top: 0.75rem;">
+        <span class="badge {{ device.status }}">{{ device.status }}</span>
+        <span class="badge">Driver {{ device.driver_type }}</span>
+        <span class="badge">Mgmt {{ live_info.mgmt_ip or device.mgmt_ip }}</span>
+      </div>
+    </div>
+    <div class="row wrap">
+      <a class="btn btn-secondary" href="{{ url_for('devices.detail', device_id=device.id) }}">Zur Geräteansicht</a>
+      <a class="btn btn-secondary" href="{{ url_for('devices.live_config', device_id=device.id) }}">Live-Konfig</a>
+      {% if native_proxy_url %}
+      <a class="btn btn-primary" href="#tab-native">Native Zyxel-Bridge</a>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+{% if warnings %}
+<section class="card">
+  <h3>Hinweise</h3>
+  <ul>
+    {% for warning in warnings %}
+    <li>{{ warning }}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section class="stats-grid">
+  <article class="card stat"><p class="muted">Bereiche</p><h3>{{ config_sections|length }}</h3></article>
+  <article class="card stat"><p class="muted">Capabilities</p><h3>{{ capabilities|length }}</h3></article>
+  <article class="card stat"><p class="muted">Running Config</p><h3>{{ 'online' if running_config else 'leer' }}</h3></article>
+  <article class="card stat"><p class="muted">Backend-Modus</p><h3>{% if native_proxy_url %}HTTP Bridge{% else %}SSH Expert{% endif %}</h3></article>
+</section>
+
+<section class="card">
+  <div class="tabs">
+    <button class="tab active" data-tab="tab-overview">Überblick</button>
+    <button class="tab" data-tab="tab-sections">Section Console</button>
+    <button class="tab" data-tab="tab-commands">Expert Commands</button>
+    {% if native_proxy_url %}
+    <button class="tab" data-tab="tab-native">Native Zyxel-Bridge</button>
+    {% endif %}
+  </div>
+
+  <div id="tab-overview" class="tab-content active">
+    <div class="config-overview">
+      <div class="config-copy">
+        <h3>Geräteweite Konfigurationsabdeckung</h3>
+        <p class="muted">
+          {% if device.driver_type == 'zyxel-ssh' %}
+          Der GS1900 stellt per SSH nur Lesezugriff bereit. Ports und VLANs laufen inzwischen nativ über das HTTP-Backend deiner WebUI; weitere Herstellerbereiche bleiben unten weiter über die integrierte Bridge erreichbar.
+          {% else %}
+          Der EdgeRouter lässt sich direkt aus der App per EdgeOS-SSH konfigurieren. Für Löschungen bitte explizit `delete ...` verwenden.
+          {% endif %}
+        </p>
+      </div>
+      <div class="capability-grid">
+        {% for capability in capabilities %}
+        <div class="capability-chip">{{ capability }}</div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-sections" class="tab-content">
+    <div class="config-section-list">
+      {% for section in config_sections %}
+      <article class="section-card">
+        <div class="row row-space wrap">
+          <div>
+            <h3>{{ section.title }}</h3>
+            <p class="muted">{{ section.description }}</p>
+          </div>
+          {% if section.editable %}
+          <span class="badge success">direkt anwendbar</span>
+          {% else %}
+          <span class="badge warning">Bridge / Read Only</span>
+          {% endif %}
+        </div>
+
+        {% if section.note %}
+        <p class="config-note">{{ section.note }}</p>
+        {% endif %}
+
+        {% if section.editable %}
+        <form method="post" class="grid-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="action" value="expert_commands">
+          <textarea class="input config-editor" name="commands" rows="14">{{ section.lines|join('\n') }}</textarea>
+          <div class="row wrap">
+            <label class="toggle-line"><input type="checkbox" name="dry_run" value="1" checked> Nur Vorschau</label>
+            <button class="btn btn-primary" type="submit">Section anwenden</button>
+          </div>
+        </form>
+        {% else %}
+        <pre class="code-block">{{ section.lines|join('\n') }}</pre>
+        {% endif %}
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div id="tab-commands" class="tab-content">
+    {% if device.driver_type == 'edgeos-ssh' %}
+    <form method="post" class="grid-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <input type="hidden" name="action" value="expert_commands">
+      <label>EdgeOS-Kommandos
+        <textarea class="input config-editor" name="commands" rows="22">{{ submitted_commands or command_config }}</textarea>
+      </label>
+      <p class="muted">Leere Zeilen und `//`-Kommentare werden ignoriert. Löschungen bitte explizit als `delete ...` formulieren; `commit` und `save` übernimmt das Backend.</p>
+      <div class="row wrap">
+        <label class="toggle-line"><input type="checkbox" name="dry_run" value="1" checked> Nur Vorschau</label>
+        <button class="btn btn-primary" type="submit">Kommandos ausführen</button>
+      </div>
+    </form>
+    {% else %}
+    <p class="muted">Für den GS1900 laufen Ports und VLANs jetzt nativ über deine App. Weitere Bereiche bleiben im nächsten Tab über die Bridge verfügbar, weil die SSH-CLI auf dieser Firmware nur lesend arbeitet.</p>
+    <pre class="code-block">{{ running_config or 'Keine Running-Config verfügbar.' }}</pre>
+    {% endif %}
+
+    {% if result %}
+    <div class="result-shell">
+      <h3>Letztes Ergebnis</h3>
+      <pre class="code-block">{{ result.commands|join('\n') if result.commands else 'Keine Befehle' }}</pre>
+      {% if result.output %}
+      <pre class="code-block">{{ result.output|join('\n\n') }}</pre>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  {% if native_proxy_url %}
+  <div id="tab-native" class="tab-content">
+    <p class="muted">Die native GS1900-Weboberfläche läuft hier in deiner App, inklusive aller Herstellerseiten für VLAN, QoS, Security, Management, Wartung und Diagnose.</p>
+    <iframe class="native-bridge-frame" src="{{ native_proxy_url }}" title="Native Zyxel Bridge"></iframe>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

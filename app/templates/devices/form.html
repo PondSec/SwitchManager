@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="card form-card">
+  <h2>{{ title }}</h2>
+  <p class="muted">Hinzufügen/Bearbeiten eines Switches inklusive Verbindungseinstellungen für den Controller.</p>
+  <form method="post" class="grid-form device-form">
+    {{ form.hidden_tag() }}
+    <label>{{ form.name.label }}{{ form.name(class_='input') }}</label>
+    <label>{{ form.host.label }}{{ form.host(class_='input') }}</label>
+    <label>{{ form.ssh_port.label }}{{ form.ssh_port(class_='input') }}</label>
+    <label>{{ form.username.label }}{{ form.username(class_='input') }}</label>
+    <label>{{ form.password.label }}{{ form.password(class_='input') }}<small class='muted'>Beim Bearbeiten leer lassen, um das bestehende Passwort beizubehalten.</small></label>
+    <label>{{ form.key_path.label }}{{ form.key_path(class_='input') }}</label>
+    <label>{{ form.model.label }}{{ form.model(class_='input', placeholder='z.B. GS1900-24E oder EdgeRouter X') }}</label>
+    <label>{{ form.inventory_port_count.label }}{{ form.inventory_port_count(class_='input', placeholder='automatisch wenn leer') }}</label>
+    <label>{{ form.driver_type.label }}{{ form.driver_type(class_='input') }}</label>
+    <div class="row wrap">
+      {{ form.submit(class_='btn btn-primary') }}
+      <a class="btn btn-secondary" href="{{ url_for('devices.index') }}">Abbrechen</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

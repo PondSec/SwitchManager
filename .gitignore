@@ -1,0 +1,22 @@
+# Python caches and local environments
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local runtime state and secrets
+.env
+.env.local
+instance/
+logs/
+backups/
+
+# Generated reports and exports with device-specific data
+reports/
+network_hardening_*.pdf
+
+# OS/editor noise
+.DS_Store

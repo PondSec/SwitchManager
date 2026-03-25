@@ -1,0 +1,145 @@
+<h3>Port {{ port.port_number }} bearbeiten</h3>
+<form method="post" action="{{ url_for('devices.update_port', device_id=port.device_id, port_id=port.id) }}" class="grid-form" data-busy-submit data-busy-label="Speichert auf dem Gerät...">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  {% set live = live_port or {} %}
+  {% set zyxel = zyxel_profile or {} %}
+  {% set zyxel_vlans = live_vlans or zyxel.get('available_vlans', []) %}
+  {% set zyxel_memberships = zyxel.get('memberships', {}) %}
+  {% set edge_tagged = live.get('tagged_vlans', []) %}
+  {% set edge_switch = live.get('switch_name') or (switch_options[0] if switch_options else 'switch0') %}
+  {% set poe_supported = live.get('poe_supported', True) %}
+  {% set poe_reason = live.get('poe_reason', '') %}
+  {% set poe_role = live.get('poe_role', 'none') %}
+  {% set poe_note = live.get('poe_note', '') %}
+  {% if port_warning %}
+  <p class="muted">Live-Portdaten konnten gerade nicht geladen werden: {{ port_warning }}</p>
+  {% endif %}
+  <label>Alias
+    <input class="input" name="alias" value="{{ zyxel.get('alias', port.alias) }}">
+  </label>
+  {% if device.driver_type == 'zyxel-ssh' %}
+  <p class="muted">Dieser Dialog schreibt direkt in die native GS1900-Webengine und speichert die Aenderung anschliessend sofort in die Startup-Konfiguration.</p>
+  <input type="hidden" name="current_alias" value="{{ zyxel.get('alias', port.alias or '') }}">
+  <input type="hidden" name="current_admin" value="{{ '1' if zyxel.get('admin_enabled', port.admin_enabled) else '0' }}">
+  <input type="hidden" name="current_speed" value="{{ zyxel.get('speed_code', '0') }}">
+  <input type="hidden" name="current_duplex" value="{{ zyxel.get('duplex_code', '0') }}">
+  <input type="hidden" name="current_pvid" value="{{ zyxel.get('pvid', port.vlan_id or 1) }}">
+  <input type="hidden" name="current_frame_type" value="{{ zyxel.get('frame_type_code', '0') }}">
+  <input type="hidden" name="current_flow_control" value="{{ '1' if zyxel.get('flow_control_enabled') else '0' }}">
+  <input type="hidden" name="current_ingress_filtering" value="{{ '1' if zyxel.get('ingress_filtering_enabled') else '0' }}">
+  <input type="hidden" name="current_vlan_trunk" value="{{ '1' if zyxel.get('vlan_trunk_enabled') else '0' }}">
+  <label>Port Speed
+    <select class="input" name="speed">
+      <option value="0" {% if zyxel.get('speed_code', '0') == '0' %}selected{% endif %}>Auto</option>
+      <option value="1" {% if zyxel.get('speed_code') == '1' %}selected{% endif %}>10M</option>
+      <option value="2" {% if zyxel.get('speed_code') == '2' %}selected{% endif %}>100M</option>
+      <option value="3" {% if zyxel.get('speed_code') == '3' %}selected{% endif %}>1000M</option>
+    </select>
+  </label>
+  <label>Duplex
+    <select class="input" name="duplex">
+      <option value="0" {% if zyxel.get('duplex_code', '0') == '0' %}selected{% endif %}>Auto</option>
+      <option value="1" {% if zyxel.get('duplex_code') == '1' %}selected{% endif %}>Full</option>
+      <option value="2" {% if zyxel.get('duplex_code') == '2' %}selected{% endif %}>Half</option>
+    </select>
+  </label>
+  <label>PVID
+    <input class="input" name="pvid" type="number" min="1" max="4094" value="{{ zyxel.get('pvid', port.vlan_id or 1) }}">
+  </label>
+  <label>Accepted Frame Type
+    <select class="input" name="frame_type">
+      <option value="0" {% if zyxel.get('frame_type_code', '0') == '0' %}selected{% endif %}>All</option>
+      <option value="1" {% if zyxel.get('frame_type_code') == '1' %}selected{% endif %}>Tag Only</option>
+      <option value="2" {% if zyxel.get('frame_type_code') == '2' %}selected{% endif %}>Untag Only</option>
+    </select>
+  </label>
+  <label class="toggle-line"><input type="checkbox" name="admin_enabled" {% if zyxel.get('admin_enabled', port.admin_enabled) %}checked{% endif %}> Admin enabled</label>
+  <label class="toggle-line"><input type="checkbox" name="flow_control" {% if zyxel.get('flow_control_enabled') %}checked{% endif %}> Flow control</label>
+  <label class="toggle-line"><input type="checkbox" name="ingress_filtering" {% if zyxel.get('ingress_filtering_enabled') %}checked{% endif %}> Ingress filtering</label>
+  <label class="toggle-line"><input type="checkbox" name="vlan_trunk" {% if zyxel.get('vlan_trunk_enabled') %}checked{% endif %}> VLAN trunk</label>
+  {% if zyxel_vlans %}
+  <div>
+    <p class="muted">VLAN-Mitgliedschaften dieses Ports</p>
+    <table class="table">
+      <thead>
+        <tr><th>VLAN</th><th>Name</th><th>Membership</th></tr>
+      </thead>
+      <tbody>
+        {% for vlan in zyxel_vlans %}
+        {% set vlan_id = vlan.vlan_id if vlan.vlan_id is defined else vlan.get('vlan_id') %}
+        {% set vlan_name = vlan.name if vlan.name is defined else vlan.get('name', 'VLAN ' ~ vlan_id) %}
+        {% set membership_code = zyxel_memberships.get(vlan_id, '0') %}
+        <tr>
+          <td>{{ vlan_id }}</td>
+          <td>{{ vlan_name }}</td>
+          <td>
+            <select class="input" name="membership_{{ vlan_id }}">
+              <option value="0" {% if membership_code == '0' %}selected{% endif %}>Excluded</option>
+              <option value="1" {% if membership_code == '1' %}selected{% endif %}>Forbidden</option>
+              <option value="2" {% if membership_code == '2' %}selected{% endif %}>Tagged</option>
+              <option value="3" {% if membership_code == '3' %}selected{% endif %}>Untagged</option>
+            </select>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+  <p class="muted">Hinweis: Auf dem GS1900 darf nur ein VLAN je Port als `Untagged` gesetzt sein. Speichern schreibt die Port- und VLAN-Aenderungen sofort in Running- und Startup-Konfiguration.</p>
+  {% elif device.driver_type == 'edgeos-ssh' %}
+  <p class="muted">Auf dem EdgeRouter konfiguriert dieser Dialog den Port als `switch-port` auf dem gewaehlten Switch-Interface. `Routed Ethernet` entfernt den Port wieder aus dem EdgeOS-Switch.</p>
+  {% if live.get('vif_vlans') %}
+  <p class="muted">Auf diesem Port existieren aktuell Layer-3-VIFs: {{ live.get('vif_vlans', [])|join(', ') }}. Solange diese bestehen, kann EdgeOS den Port nicht als `switch-port` committen.</p>
+  {% endif %}
+  <label>Port-Rolle
+    <select class="input" name="vlan_mode">
+      <option value="untagged" {% if live.get('port_profile') != 'routed' and live.get('vlan_mode') != 'tagged' and port.vlan_mode != 'routed' %}selected{% endif %}>Switch-Port Access / Native VLAN</option>
+      <option value="tagged" {% if live.get('port_profile') != 'routed' and live.get('vlan_mode') == 'tagged' %}selected{% endif %}>Switch-Port Tagged</option>
+      <option value="excluded" {% if live.get('port_profile') == 'routed' or port.vlan_mode == 'routed' %}selected{% endif %}>Routed Ethernet</option>
+    </select>
+  </label>
+  <label>Switch-Interface
+    <select class="input" name="switch_name">
+      {% for switch_name in switch_options or ['switch0'] %}
+      <option value="{{ switch_name }}" {% if switch_name == edge_switch %}selected{% endif %}>{{ switch_name }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Native VLAN-ID
+    <input class="input" name="vlan_id" type="number" min="1" max="4094" value="{{ live.get('native_vlan_id', live.get('vlan_id', port.vlan_id or 1)) }}">
+  </label>
+  <label>Tagged VLANs
+    <input class="input" name="tagged_vlans" value="{{ edge_tagged|join(',') }}" placeholder="z.B. 20,77,99">
+  </label>
+  <label class="toggle-line"><input type="checkbox" name="remove_l3_vifs"> Vorhandene Layer-3-VIFs auf diesem Port entfernen, bevor der Port als Switch-Port konfiguriert wird</label>
+  <p class="muted">`Switch-Port Access / Native VLAN` setzt den Port in das angegebene Native VLAN. `Switch-Port Tagged` legt den Port ohne Native VLAN an und nutzt die VLAN-ID plus die optionalen Tagged VLANs.</p>
+  <p class="muted">Achtung: Das Entfernen von VIFs loescht Layer-3-Adressen und kann Routing, Gateways oder deine Erreichbarkeit des Routers beeinflussen.</p>
+  {% else %}
+  <label>VLAN-ID
+    <input class="input" name="vlan_id" type="number" min="1" max="4094" value="{{ port.vlan_id }}">
+  </label>
+  <label>VLAN-Modus
+    <select class="input" name="vlan_mode">
+      <option value="tagged" {% if port.vlan_mode == 'tagged' %}selected{% endif %}>Tagged</option>
+      <option value="untagged" {% if port.vlan_mode == 'untagged' %}selected{% endif %}>Untagged</option>
+      <option value="excluded" {% if port.vlan_mode == 'excluded' %}selected{% endif %}>Excluded</option>
+    </select>
+  </label>
+  {% endif %}
+  {% if device.driver_type != 'zyxel-ssh' %}
+  <label class="toggle-line"><input type="checkbox" name="admin_enabled" {% if port.admin_enabled %}checked{% endif %}> Admin enabled</label>
+  {% if poe_role == 'input' %}
+  <p class="muted">{{ poe_note or poe_reason or 'Dieser Port ist nur PoE-In.' }}</p>
+  {% elif poe_role == 'output' %}
+  <p class="muted">{{ poe_note or 'Dieser Port bietet PoE-Out.' }}</p>
+  {% elif not poe_supported %}
+  <p class="muted">{{ poe_reason or 'PoE wird auf diesem Port nicht unterstuetzt.' }}</p>
+  {% endif %}
+  <label class="toggle-line"><input type="checkbox" name="poe_enabled" {% if port.poe_enabled %}checked{% endif %} {% if poe_role == 'input' or (not poe_supported and not port.poe_enabled) %}disabled{% endif %}> PoE enabled</label>
+  {% endif %}
+  <div class="row wrap">
+    <button class="btn btn-primary" type="submit">Speichern</button>
+    <button class="btn btn-secondary" type="button" data-close-modal>Verwerfen</button>
+  </div>
+</form>
