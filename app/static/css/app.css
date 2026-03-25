@@ -467,16 +467,21 @@ input[type='radio'] { accent-color: var(--accent); }
 }
 .port-tile {
   position: relative;
-  min-height: 52px;
-  border-radius: 10px;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  min-height: 0;
+  padding: 0;
+  border-radius: 8px;
   border: 1px solid #3f5473;
   background: #7f8a9c;
   color: #0d1422;
   font-weight: 700;
+  font-size: .95rem;
   display: grid;
   place-items: center;
   cursor: pointer;
 }
+.port-tile span { line-height: 1; }
 .port-tile.active { background: #2dca7f; }
 .port-tile.disconnected { background: #8f99a9; }
 .port-tile.disabled { background: #4d5667; color: #edf2fc; }
@@ -492,12 +497,16 @@ input[type='radio'] { accent-color: var(--accent); }
 .device-icon {
   position: absolute;
   top: 4px;
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   stroke-width: 2.2;
 }
-.poe-icon { right: 4px; }
-.device-icon { left: 4px; }
+.poe-icon { right: 4px; color: #10263f; }
+.device-icon { left: 4px; color: #10263f; }
+.port-tile.sfp .poe-icon,
+.port-tile.sfp .device-icon,
+.port-tile.ten-gbe .poe-icon,
+.port-tile.ten-gbe .device-icon { color: #eaf3ff; }
 
 .ports-selected-line { font-size: .92rem; color: #d5e4fb; font-weight: 600; }
 .port-config-panel { max-width: 940px; width: 100%; display: grid; gap: var(--space-3); }
