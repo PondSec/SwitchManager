@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}SwitchManager{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">SwitchManager</div>
+    <nav>
+      <a href="{{ url_for('dashboard.index') }}">Dashboard</a>
+      <a href="{{ url_for('devices.index') }}">Geräte</a>
+      <a href="{{ url_for('vlans.index') }}">VLANs</a>
+      <a href="{{ url_for('ports.index') }}">Ports</a>
+      <a href="{{ url_for('poe.index') }}">PoE</a>
+      <a href="{{ url_for('system.index') }}">System</a>
+      <a href="{{ url_for('audit.index') }}">Audit</a>
+      <a href="{{ url_for('settings.index') }}">Einstellungen</a>
+    </nav>
+  </aside>
+  <main class="main">
+    <header class="topbar card">
+      <div>
+        <strong>Aktiver Controller</strong>
+        <span class="muted">lokal / self-hosted</span>
+      </div>
+      <div class="top-actions">
+        {% if current_user.is_authenticated %}
+          <span class="badge">{{ current_user.username }} ({{ current_user.role }})</span>
+          <a class="btn btn-secondary" href="{{ url_for('auth.logout') }}">Logout</a>
+        {% endif %}
+      </div>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <section class="toasts">
+        {% for category, message in messages %}
+          <div class="toast {{ category }}">{{ message }}</div>
+        {% endfor %}
+      </section>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+</div>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

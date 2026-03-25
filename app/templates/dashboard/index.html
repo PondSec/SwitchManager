@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<section class="card-grid">
+  <article class="card"><h3>Geräte</h3><p class="big">{{ stats.devices }}</p></article>
+  <article class="card"><h3>Online</h3><p class="big status-online">{{ stats.online }}</p></article>
+  <article class="card"><h3>VLANs</h3><p class="big">{{ stats.vlans }}</p></article>
+  <article class="card"><h3>Änderungen</h3><p class="big">{{ stats.changes }}</p></article>
+</section>
+<section class="card">
+  <h2>Geräteübersicht</h2>
+  <table class="table"><tr><th>Name</th><th>Host</th><th>Status</th><th>Firmware</th></tr>
+  {% for d in devices %}<tr><td>{{ d.name }}</td><td>{{ d.host }}</td><td><span class="badge {{ d.status }}">{{ d.status }}</span></td><td>{{ d.firmware }}</td></tr>{% endfor %}
+  </table>
+</section>
+<section class="card">
+  <h2>Letzte Änderungen</h2>
+  <ul>{% for item in recent %}<li>{{ item.created_at }} · {{ item.username }} · {{ item.action }} · {{ item.result }}</li>{% endfor %}</ul>
+</section>
+{% endblock %}

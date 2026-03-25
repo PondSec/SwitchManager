@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="card">
+  <h2>Audit Trail</h2>
+  <table class="table">
+    <tr><th>Zeit</th><th>Benutzer</th><th>Aktion</th><th>Ziel</th><th>Ergebnis</th><th>Details</th></tr>
+    {% for l in logs %}
+    <tr><td>{{ l.created_at }}</td><td>{{ l.username }}</td><td>{{ l.action }}</td><td>{{ l.target }}</td><td><span class="badge {{ l.result }}">{{ l.result }}</span></td><td>{{ l.details }}</td></tr>
+    {% endfor %}
+  </table>
+</section>
+{% endblock %}

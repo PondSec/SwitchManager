@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="card two-col">
+  <div>
+    <h2>PoE Verwaltung (vorbereitet)</h2>
+    <form method="post" class="grid-form">
+      {{ form.hidden_tag() }}
+      <label>{{ form.port_number.label }}{{ form.port_number(class_='input') }}</label>
+      <label class="toggle-line">{{ form.enabled() }} <span>PoE aktiv</span></label>
+      <label class="toggle-line">{{ form.dry_run() }} <span>Nur Vorschau</span></label>
+      {{ form.submit(class_='btn btn-primary') }}
+    </form>
+    {% if preview %}<pre class="code-block">{{ preview.commands|join('\n') }}</pre>{% endif %}
+  </div>
+  <div>
+    <h2>PoE Status</h2>
+    <table class="table"><tr><th>Port</th><th>PoE</th></tr>
+      {% for p in ports %}<tr><td>{{ p.port_number }}</td><td>{{ 'an' if p.poe_enabled else 'aus' }}</td></tr>{% endfor %}
+    </table>
+  </div>
+</section>
+{% endblock %}
