@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="card">
+  <div class="row"><h2>Geräteverwaltung</h2><a class="btn btn-primary" href="{{ url_for('devices.create') }}">Neues Gerät</a></div>
+  <table class="table">
+    <tr><th>Name</th><th>Host</th><th>SSH</th><th>Status</th><th>Aktionen</th></tr>
+    {% for d in devices %}
+      <tr>
+        <td>{{ d.name }}</td><td>{{ d.host }}</td><td>{{ d.username }}@{{ d.ssh_port }}</td>
+        <td><span class="badge {{ d.status }}">{{ d.status }}</span></td>
+        <td class="row">
+          <form method="post" action="{{ url_for('devices.test_connection', device_id=d.id) }}">{{ csrf_token() }}<button class="btn btn-secondary">Test</button></form>
+          <a class="btn btn-secondary" href="{{ url_for('devices.edit', device_id=d.id) }}">Bearbeiten</a>
+          <form method="post" action="{{ url_for('devices.delete', device_id=d.id) }}" data-confirm="Gerät löschen?">{{ csrf_token() }}<button class="btn btn-danger">Löschen</button></form>
+        </td>
+      </tr>
+    {% endfor %}
+  </table>
+</section>
+{% endblock %}

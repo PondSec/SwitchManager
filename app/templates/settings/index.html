@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="card two-col">
+  <div>
+    <h2>Einstellungen</h2>
+    <div class="collapsible">
+      <h3>SSH Verhalten</h3>
+      <p>Host-Key Policy, Timeouts und Expertenmodus über .env steuerbar.</p>
+    </div>
+    <div class="collapsible"><h3>Polling-Intervall</h3><p>Asynchrones Refresh via JS aktiv (15s).</p></div>
+  </div>
+  <div>
+    <h2>Benutzerverwaltung</h2>
+    <a class="btn btn-secondary" href="{{ url_for('auth.users') }}">Benutzer öffnen</a>
+    <ul>{% for u in users %}<li>{{ u.username }} ({{ u.role }})</li>{% endfor %}</ul>
+  </div>
+</section>
+{% endblock %}
