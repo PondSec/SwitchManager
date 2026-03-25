@@ -4,7 +4,7 @@ from app.services.zyxel_driver import ZyxelSSHDriver
 
 
 def get_driver(device: Device):
-    if device.driver_type == "zyxel-ssh":
+    if device.driver_type in {"zyxel-ssh", "edgeos-ssh"}:
         return ZyxelSSHDriver(device.host, device.ssh_port, device.username, device.password, device.key_path)
     if device.driver_type == "edgeos-ssh":
         return EdgeOSSSHDriver(device.host, device.ssh_port, device.username, device.password, device.key_path)
