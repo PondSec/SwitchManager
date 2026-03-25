@@ -93,3 +93,37 @@ a { color: inherit; }
   .toolbar, .two-col, .device-wall, .stats-grid { grid-template-columns: 1fr; }
   .frontpanel { grid-template-columns: repeat(6, minmax(0, 1fr)); }
 }
+
+.ports-workspace { display: grid; gap: 14px; background: #070b14; border-color: #1f2f4c; }
+.ports-header { display: flex; justify-content: space-between; align-items: center; }
+.ports-header h2 { margin: 0; }
+.ports-actions { display: flex; gap: 8px; }
+.ports-rack { display: grid; grid-template-columns: repeat(16, minmax(0, 1fr)); gap: 6px; padding: 14px; border: 1px solid #1a2840; border-radius: 10px; background: #04070f; }
+.port-tile { position: relative; min-height: 42px; border: 1px solid #354764; border-radius: 6px; background: #7c8493; color: #09101d; font-weight: 700; cursor: pointer; display: grid; place-items: center; }
+.port-tile:hover { transform: translateY(-1px); }
+.port-tile.active { background: #2dcf7f; }
+.port-tile.disconnected { background: #9098a8; color: #1a202f; }
+.port-tile.disabled { background: #505767; color: #e2e6ee; }
+.port-tile.warning { background: #bdd343; }
+.port-tile.sfp { background: #2a86c9; color: #e9f5ff; }
+.port-tile.selected { outline: 2px solid #3c9cff; outline-offset: 1px; box-shadow: 0 0 0 2px rgba(60, 156, 255, .25); }
+.poe-icon, .device-icon { position: absolute; top: 4px; font-size: .72rem; }
+.poe-icon { right: 4px; }
+.device-icon { left: 4px; }
+.ports-selected-line { font-weight: 600; color: #d7e6ff; }
+.port-config-panel { max-width: 680px; margin: 0 auto; width: 100%; display: grid; gap: 10px; }
+.config-info { background: #101827; border: 1px solid #1d2c49; border-radius: 8px; padding: 10px 12px; color: #97b0d8; }
+.port-config-form { display: grid; gap: 12px; }
+.field-row { display: grid; grid-template-columns: 220px 1fr; align-items: center; gap: 10px; }
+.option-group { display: flex; gap: 12px; flex-wrap: wrap; }
+.option-group label, .segmented label { display: flex; align-items: center; gap: 4px; color: #dce7ff; }
+.segmented { display: inline-flex; background: #111c30; border: 1px solid #2a3c5e; border-radius: 999px; padding: 2px; }
+.segmented label { padding: 4px 12px; border-radius: 999px; }
+.segmented input { accent-color: #2b7fff; }
+.split-two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.panel-footer { display: flex; justify-content: flex-end; gap: 10px; padding-top: 8px; border-top: 1px solid #1f2f48; }
+
+@media (max-width: 960px) {
+  .ports-rack { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+  .field-row { grid-template-columns: 1fr; }
+}

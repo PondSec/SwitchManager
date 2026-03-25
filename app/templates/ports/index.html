@@ -1,40 +1,92 @@
 {% extends 'base.html' %}
 {% block content %}
-<section class="card two-col">
-  <div>
-    <h2>Port-Konfiguration</h2>
-    <div class="tabs"><button class="tab active" data-tab="single">Einzeln</button><button class="tab" data-tab="bulk">Bulk</button></div>
-    <div class="tab-content active" id="single">
-      <form method="post" class="grid-form">
-        {{ form.hidden_tag() }}
-        <label>{{ form.port_number.label }}{{ form.port_number(class_='input') }}</label>
-        <label>{{ form.vlan_id.label }}{{ form.vlan_id(class_='input') }}</label>
-        <label>{{ form.vlan_mode.label }}{{ form.vlan_mode(class_='input') }}</label>
-        <label>{{ form.alias.label }}{{ form.alias(class_='input') }}</label>
-        <label class="toggle-line">{{ form.admin_enabled() }} <span>Admin Aktiv</span></label>
-        <label class="toggle-line">{{ form.dry_run() }} <span>Dry Run</span></label>
-        {{ form.submit(class_='btn btn-primary') }}
-      </form>
+<section class="card ports-workspace" id="ports-workspace" data-ports='{{ ports_payload|tojson }}' data-vlans='{{ vlan_options|tojson }}'>
+  <header class="ports-header">
+    <div>
+      <h2>Port Configuration</h2>
+      <p class="muted">Multi-Port-Editing im UniFi-Stil</p>
     </div>
-    <div class="tab-content" id="bulk">
-      <form method="post" class="grid-form">
-        {{ bulk_form.hidden_tag() }}
-        <label>{{ bulk_form.ports.label }}{{ bulk_form.ports(class_='input') }}</label>
-        <label class="toggle-line">{{ bulk_form.admin_enabled() }} <span>Admin Aktiv</span></label>
-        {{ bulk_form.submit(class_='btn btn-secondary') }}
-      </form>
+    <div class="ports-actions">
+      <button type="button" class="btn btn-secondary" data-action="deselect-all">Deselect All</button>
+      <button type="button" class="btn btn-primary" data-action="select-all">Select All</button>
     </div>
-    {% if preview %}<pre class="code-block">{{ preview.commands|join('\n') }}</pre>{% endif %}
-  </div>
-  <div>
-    <h2>Frontpanel (24 Ports)</h2>
-    <div class="frontpanel">
-      {% for port in ports %}
-        <button class="port {% if port.link_state == 'up' %}up{% else %}down{% endif %}" data-port-id="{{ port.id }}">{{ port.port_number }}</button>
-      {% endfor %}
-    </div>
-  </div>
+  </header>
+
+  <div class="ports-rack" id="ports-rack" aria-label="Switch ports"></div>
+
+  <div class="ports-selected-line" id="ports-selected-line">No ports selected</div>
+
+  <section class="port-config-panel" id="port-config-panel" hidden>
+    <div class="config-info" id="config-info"></div>
+    <form id="multi-port-form" class="port-config-form">
+      <div class="field-row">
+        <label>Port Status</label>
+        <div class="option-group" data-field="status">
+          <label><input type="radio" name="status" value="active"> Active</label>
+          <label><input type="radio" name="status" value="disabled"> Disabled</label>
+          <label><input type="radio" name="status" value="restricted"> Restricted by MAC ID</label>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <label for="vlan-native">Native VLAN / Network</label>
+        <select id="vlan-native" name="vlanNative" class="input"></select>
+      </div>
+
+      <div class="field-row">
+        <label>Tagged VLAN Management</label>
+        <div class="option-group" data-field="taggedPolicy">
+          <label><input type="radio" name="taggedPolicy" value="allow_all"> Allow All</label>
+          <label><input type="radio" name="taggedPolicy" value="block_all"> Block All</label>
+          <label><input type="radio" name="taggedPolicy" value="custom"> Custom</label>
+        </div>
+      </div>
+
+      <div class="field-row" id="custom-tagged-row" hidden>
+        <label for="tagged-vlans">Custom Tagged VLANs</label>
+        <select id="tagged-vlans" class="input" name="vlanTagged" multiple size="5"></select>
+      </div>
+
+      <div class="field-row">
+        <label>PoE</label>
+        <div class="option-group" data-field="poeMode">
+          <label><input type="radio" name="poeMode" value="off"> Off</label>
+          <label><input type="radio" name="poeMode" value="poe_plus"> PoE+</label>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <label>Advanced</label>
+        <div class="segmented" role="radiogroup" aria-label="Advanced Mode">
+          <label><input type="radio" name="profile" value="auto">Auto</label>
+          <label><input type="radio" name="profile" value="manual">Manual</label>
+        </div>
+      </div>
+
+      <div class="field-row manual-fields" id="manual-fields" hidden>
+        <label for="speed">Speed / Duplex</label>
+        <div class="split-two">
+          <select id="speed" name="speed" class="input">
+            <option value="100M">100M</option>
+            <option value="1G">1G</option>
+            <option value="2.5G">2.5G</option>
+            <option value="10G">10G</option>
+          </select>
+          <select id="duplex" name="duplex" class="input">
+            <option value="full">Full</option>
+            <option value="half">Half</option>
+          </select>
+        </div>
+      </div>
+
+      <footer class="panel-footer">
+        <button type="button" class="btn btn-secondary" id="cancel-changes">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="apply-changes">Apply Changes</button>
+      </footer>
+    </form>
+  </section>
 </section>
+
 <section class="card" id="port-table-wrapper">{% include 'partials/port_table.html' %}</section>
 <div id="modal" class="modal hidden"><div class="modal-content" id="modal-content"></div></div>
 {% endblock %}
