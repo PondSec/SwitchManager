@@ -38,6 +38,7 @@ pip install -r requirements.txt
 cp .env.example .env
 python run.py
 ```
+Standardmäßig startet die App auf `http://127.0.0.1:8237` (überschreibbar via `PORT`).
 
 Alternativ:
 ```bash
