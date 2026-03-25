@@ -3,20 +3,57 @@ from flask_login import current_user, login_required
 
 from app.extensions import db
 from app.forms.network_profile_forms import NetworkProfileForm
-from app.models.models import Device, NetworkProfile
+from app.models.models import Device, NetworkProfile, VLAN
 from app.services.audit_service import write_audit
 from app.services.command_builder import CommandAction, CommandBuilder
+from app.services.device_center import load_device_center_snapshot
+from app.services.device_inventory import apply_vlan_snapshot
 from app.utils.device_context import get_selected_device
 from app.utils.driver_factory import get_driver
 
 bp = Blueprint("networks", __name__, url_prefix="/networks")
 
 
+def _refresh_network_inventory(device) -> list[dict]:
+    driver = get_driver(device)
+    try:
+        driver.connect()
+        vlans = driver.get_vlans()
+        apply_vlan_snapshot(device, vlans)
+        return vlans
+    finally:
+        driver.close()
+
+
 @bp.route("/")
 @login_required
 def index():
     profiles = NetworkProfile.query.order_by(NetworkProfile.updated_at.desc()).all()
-    return render_template("networks/index.html", profiles=profiles)
+    device = get_selected_device()
+    live_vlans: list[dict] = []
+    snapshot = None
+    snapshot_warning = ""
+    if device:
+        try:
+            snapshot = load_device_center_snapshot(device)
+            live_vlans = snapshot.get("vlan_cards", [])
+        except Exception as exc:  # noqa: BLE001
+            snapshot_warning = str(exc)
+            try:
+                live_vlans = _refresh_network_inventory(device)
+            except Exception:  # noqa: BLE001
+                live_vlans = []
+
+    device_vlans = VLAN.query.filter_by(device_id=device.id).order_by(VLAN.vlan_id.asc()).all() if device else []
+    return render_template(
+        "networks/index.html",
+        profiles=profiles,
+        device=device,
+        live_vlans=live_vlans,
+        device_vlans=device_vlans,
+        snapshot=snapshot,
+        snapshot_warning=snapshot_warning,
+    )
 
 
 @bp.route("/new", methods=["GET", "POST"])
@@ -65,6 +102,8 @@ def apply(profile_id: int):
 
     driver = get_driver(device)
     try:
+        if not dry_run:
+            driver.connect()
         result = driver._run(commands, dry_run=dry_run)
         flash("Profil angewendet." if not dry_run else "Dry-Run Vorschau erstellt.", "success")
         write_audit(current_user.username, "network_profile_apply", device.name, str(commands), "success")

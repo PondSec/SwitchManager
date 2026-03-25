@@ -1,23 +1,118 @@
 {% extends 'base.html' %}
 {% block title %}Netzwerk-Profile{% endblock %}
 {% block content %}
-<section class="card">
-  <div class="row">
-    <h2>Erweiterte Netzwerk-Profile</h2>
-    <a class="btn btn-primary" href="{{ url_for('networks.create') }}">Neues Profil</a>
-  </div>
-  <table class="table">
-    <tr><th>Name</th><th>Zweck</th><th>VLAN</th><th>Gateway</th><th>DHCP</th><th>Aktion</th></tr>
-    {% for p in profiles %}
-    <tr>
-      <td>{{ p.name }}</td>
-      <td>{{ p.purpose }}</td>
-      <td>{{ p.vlan_id }}</td>
-      <td>{{ p.gateway_ip }}/{{ p.subnet_mask }}</td>
-      <td><span class="badge {{ 'success' if p.dhcp_enabled else 'failed' }}">{{ 'aktiv' if p.dhcp_enabled else 'aus' }}</span></td>
-      <td><a class="btn btn-secondary" href="{{ url_for('networks.edit', profile_id=p.id) }}">Öffnen</a></td>
-    </tr>
-    {% endfor %}
-  </table>
+<section class="hero-grid">
+  <article class="hero-card card">
+    <div>
+      <p class="eyebrow">Networks</p>
+      <h2>Netzsegmente und Profile in einer gemeinsamen Sicht</h2>
+      <p class="muted">Die Seite verbindet Live-VLANs vom aktiven Gerät mit deinen wiederverwendbaren Controller-Profilen. So wird aus der technischen VLAN-Liste eine nutzbare Segment-Ansicht.</p>
+    </div>
+    <div class="row wrap" style="margin-top: 1rem;">
+      <a class="btn btn-primary" href="{{ url_for('networks.create') }}">Neues Profil</a>
+      <a class="btn btn-secondary" href="{{ url_for('observe.index') }}">Observe</a>
+      <a class="btn btn-secondary" href="{{ url_for('vlans.index') }}">VLANs verwalten</a>
+    </div>
+  </article>
+
+  <article class="card spotlight-card">
+    <p class="eyebrow">Aktives Gerät</p>
+    {% if device %}
+    <h3>{{ device.name }}</h3>
+    <p class="muted">{{ device.model }} · {{ device.host }}</p>
+    <div class="inline-metrics" style="margin-top: 1rem;">
+      <div><span>Live VLANs</span><strong>{{ snapshot.summary.vlans_total if snapshot else live_vlans|length }}</strong></div>
+      <div><span>Clients</span><strong>{{ snapshot.summary.clients_total if snapshot else 0 }}</strong></div>
+      <div><span>Profiles</span><strong>{{ profiles|length }}</strong></div>
+    </div>
+    {% else %}
+    <p class="muted">Kein aktives Gerät ausgewählt.</p>
+    {% endif %}
+  </article>
+</section>
+
+{% if snapshot_warning %}
+<section class="card notice-card">
+  <h3>Hinweis</h3>
+  <p class="muted">{{ snapshot_warning }}</p>
+</section>
+{% endif %}
+
+<section class="metric-grid">
+  <article class="metric-card card"><p>Profiles</p><h3>{{ profiles|length }}</h3></article>
+  <article class="metric-card card"><p>Live VLANs</p><h3>{{ snapshot.summary.vlans_total if snapshot else live_vlans|length }}</h3></article>
+  <article class="metric-card card"><p>Clients</p><h3>{{ snapshot.summary.clients_total if snapshot else 0 }}</h3></article>
+  <article class="metric-card card"><p>ARP</p><h3>{{ snapshot.summary.arp_total if snapshot else 0 }}</h3></article>
+  <article class="metric-card card"><p>MAC</p><h3>{{ snapshot.summary.mac_total if snapshot else 0 }}</h3></article>
+  <article class="metric-card card"><p>DHCP</p><h3>{{ snapshot.summary.dhcp_total if snapshot else 0 }}</h3></article>
+</section>
+
+<section class="workspace-columns wide">
+  <article class="card">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Live Segments</p>
+        <h3>VLAN-Segmente</h3>
+      </div>
+      {% if device %}
+      <form method="post" action="{{ url_for('devices.action', device_id=device.id, action='sync') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-secondary" type="submit">Synchronisieren</button>
+      </form>
+      {% endif %}
+    </div>
+
+    {% if live_vlans %}
+    <div class="segment-stack">
+      {% for vlan in live_vlans %}
+      <div class="segment-card">
+        <div class="row row-space">
+          <strong>{{ vlan.name }}</strong>
+          <span class="tiny-pill">
+            {% if vlan.client_count is defined %}{{ vlan.client_count }} Clients{% else %}VLAN {{ vlan.vlan_id }}{% endif %}
+          </span>
+        </div>
+        <p>{{ vlan.label if vlan.label is defined else ('VLAN ' ~ vlan.vlan_id) }}</p>
+        <small>{{ vlan.address or 'ohne Layer-3-Adresse' }}</small>
+        <div class="segment-meta">
+          <span>Tagged {{ vlan.tagged_ports or '-' }}</span>
+          <span>Untagged {{ vlan.untagged_ports or '-' }}</span>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state-card">
+      <p class="muted">Keine Live-VLANs sichtbar. Nutze die Synchronisierung oder öffne die Live-Konfiguration.</p>
+    </div>
+    {% endif %}
+  </article>
+
+  <article class="card">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Profiles</p>
+        <h3>Controller-Profile</h3>
+      </div>
+      <a class="btn btn-primary" href="{{ url_for('networks.create') }}">Profil anlegen</a>
+    </div>
+    <table class="table">
+      <thead>
+        <tr><th>Name</th><th>Zweck</th><th>VLAN</th><th>Gateway</th><th>DHCP</th><th>Aktion</th></tr>
+      </thead>
+      <tbody>
+        {% for p in profiles %}
+        <tr>
+          <td>{{ p.name }}</td>
+          <td>{{ p.purpose }}</td>
+          <td>{{ p.vlan_id }}</td>
+          <td>{{ p.gateway_ip }}/{{ p.subnet_mask }}</td>
+          <td><span class="badge {{ 'success' if p.dhcp_enabled else 'failed' }}">{{ 'aktiv' if p.dhcp_enabled else 'aus' }}</span></td>
+          <td><a class="btn btn-secondary" href="{{ url_for('networks.edit', profile_id=p.id) }}">Öffnen</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </article>
 </section>
 {% endblock %}

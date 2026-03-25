@@ -74,9 +74,13 @@ class SSHClientService:
     def execute_command(self, command: str) -> str:
         if not self.client:
             raise SSHExecutionError("SSH-Client nicht verbunden")
-        stdin, stdout, stderr = self.client.exec_command(command, timeout=current_app.config.get("SSH_DEFAULT_TIMEOUT", 12))
-        output = stdout.read().decode("utf-8", errors="replace")
-        error = stderr.read().decode("utf-8", errors="replace")
+        timeout = current_app.config.get("SSH_DEFAULT_TIMEOUT", 12)
+        stdin, stdout, stderr = self.client.exec_command(command, timeout=timeout)
+        try:
+            output = stdout.read().decode("utf-8", errors="replace")
+            error = stderr.read().decode("utf-8", errors="replace")
+        except socket.timeout as exc:
+            raise SSHExecutionError(f"SSH-Kommando-Zeitueberschreitung nach {timeout}s") from exc
         if error.strip():
             raise SSHExecutionError(error.strip())
         return output.strip()

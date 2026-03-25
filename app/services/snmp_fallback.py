@@ -10,20 +10,42 @@ def _run_snmpwalk(host: str, community: str, oid: str, timeout: int) -> str:
     if not snmpwalk:
         return ""
     cmd = [snmpwalk, "-v2c", "-c", community, "-t", str(timeout), "-r", "1", host, oid]
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=max(2, timeout + 1), check=False)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=max(2, timeout + 1), check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
     if result.returncode != 0:
         return ""
     return result.stdout or ""
 
 
-def probe_interface_states(host: str, community: str = "public", timeout: int = 2) -> list[dict]:
+def _candidate_communities(community: str | None) -> list[str]:
+    candidates = [community or "", "public", "private"]
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for candidate in candidates:
+        normalized = candidate.strip()
+        if not normalized or normalized in seen:
+            continue
+        ordered.append(normalized)
+        seen.add(normalized)
+    return ordered
+
+
+def probe_interface_states(host: str, community: str | None = None, timeout: int = 2) -> list[dict]:
     """Best-effort SNMP fallback for ifOperStatus/ifName."""
-    raw_status = _run_snmpwalk(host, community, "IF-MIB::ifOperStatus", timeout)
+    chosen_community = None
+    raw_status = ""
+    for candidate in _candidate_communities(community):
+        raw_status = _run_snmpwalk(host, candidate, "IF-MIB::ifOperStatus", timeout)
+        if raw_status:
+            chosen_community = candidate
+            break
     if not raw_status:
         return []
 
     index_to_name: dict[int, str] = {}
-    raw_names = _run_snmpwalk(host, community, "IF-MIB::ifName", timeout)
+    raw_names = _run_snmpwalk(host, chosen_community or "public", "IF-MIB::ifName", timeout)
     for line in raw_names.splitlines():
         match = re.search(r"ifName\.(\d+)\s*=\s*STRING:\s*(.+)$", line)
         if not match:
@@ -53,7 +75,7 @@ def probe_interface_states(host: str, community: str = "public", timeout: int = 
             {
                 "port_number": port_number,
                 "link_state": "up" if status == "up" else "down",
-                "admin_enabled": status != "down",
+                "admin_enabled": True,
             }
         )
 

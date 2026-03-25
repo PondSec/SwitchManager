@@ -2,6 +2,7 @@ from flask import Blueprint, render_template
 from flask_login import login_required
 
 from app.models.models import AuditLog, Device, Port, VLAN
+from app.utils.device_context import get_selected_device
 
 bp = Blueprint("dashboard", __name__)
 
@@ -45,6 +46,12 @@ def index():
 
     problematic = sorted(device_health, key=lambda item: item["warnings"], reverse=True)[:5]
     recent = AuditLog.query.order_by(AuditLog.created_at.desc()).limit(20).all()
+    selected_device = get_selected_device()
+    selected_summary = next((item for item in device_health if selected_device and item["device"].id == selected_device.id), None)
+    vendor_breakdown: dict[str, int] = {}
+    for device in devices:
+        vendor = "EdgeOS" if "edge" in (device.driver_type or "").lower() else "Zyxel" if "zyxel" in (device.driver_type or "").lower() else "Andere"
+        vendor_breakdown[vendor] = vendor_breakdown.get(vendor, 0) + 1
 
     return render_template(
         "dashboard/index.html",
@@ -52,4 +59,7 @@ def index():
         recent=recent,
         device_health=device_health,
         problematic=problematic,
+        selected_device=selected_device,
+        selected_summary=selected_summary,
+        vendor_breakdown=vendor_breakdown,
     )

@@ -5,6 +5,17 @@ document.querySelectorAll('form[data-confirm]').forEach((form) => {
   });
 });
 
+document.querySelectorAll('form[data-busy-submit]').forEach((form) => {
+  form.addEventListener('submit', () => {
+    const submitButton = form.querySelector('button[type="submit"]');
+    if (!submitButton) return;
+    submitButton.disabled = true;
+    submitButton.dataset.originalLabel = submitButton.textContent || '';
+    submitButton.textContent = form.dataset.busyLabel || 'Wird gespeichert...';
+    form.classList.add('is-submitting');
+  });
+});
+
 document.querySelectorAll('.tab').forEach((tab) => {
   tab.addEventListener('click', () => {
     const id = tab.dataset.tab;
@@ -59,3 +70,33 @@ if (globalSearch) {
     }
   });
 }
+
+document.querySelectorAll('[data-table-filter]').forEach((input) => {
+  const tableName = input.dataset.tableFilter;
+  const bodies = [...document.querySelectorAll(`[data-filter-body="${tableName}"]`)];
+  const empties = [...document.querySelectorAll(`[data-filter-empty="${tableName}"]`)];
+  if (!bodies.length) return;
+
+  const updateFilter = () => {
+    const query = input.value.trim().toLowerCase();
+    let totalVisible = 0;
+
+    bodies.forEach((body) => {
+      let visible = 0;
+      body.querySelectorAll('[data-filter-row]').forEach((row) => {
+        const text = (row.dataset.filterText || row.textContent || '').toLowerCase();
+        const show = !query || text.includes(query);
+        row.hidden = !show;
+        if (show) visible += 1;
+      });
+      totalVisible += visible;
+    });
+
+    empties.forEach((row) => {
+      row.hidden = totalVisible !== 0;
+    });
+  };
+
+  input.addEventListener('input', updateFilter);
+  updateFilter();
+});

@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block title %}Live-Konfiguration · {{ device.name }}{% endblock %}
+{% block content %}
+<section class="card">
+  <div class="row row-space wrap">
+    <div>
+      <h2>Live-Konfiguration: {{ device.name }}</h2>
+      <p class="muted">{{ device.model }} · {{ device.host }} · Firmware {{ device.firmware }}</p>
+    </div>
+    <div class="row wrap">
+      <a class="btn btn-secondary" href="{{ url_for('devices.detail', device_id=device.id) }}">Zur Geräteansicht</a>
+      <a class="btn btn-secondary" href="{{ url_for('devices.advanced', device_id=device.id) }}">Advanced Config</a>
+      <form method="post" action="{{ url_for('devices.action', device_id=device.id, action='sync') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="btn btn-primary" type="submit">Synchronisieren</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+{% if warnings %}
+<section class="card">
+  <h3>Hinweise</h3>
+  <ul>
+    {% for warning in warnings %}
+    <li>{{ warning }}</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section class="stats-grid">
+  <article class="card stat"><p class="muted">Management-IP</p><h3>{{ live_info.mgmt_ip or device.mgmt_ip }}</h3></article>
+  <article class="card stat"><p class="muted">Firmware</p><h3>{{ live_info.firmware or device.firmware }}</h3></article>
+  <article class="card stat"><p class="muted">VLANs</p><h3>{{ live_vlans|length }}</h3></article>
+  <article class="card stat"><p class="muted">Interfaces</p><h3>{{ interfaces|length }}</h3></article>
+</section>
+
+<section class="card">
+  <div class="tabs">
+    <button class="tab active" data-tab="live-interfaces">Interfaces</button>
+    <button class="tab" data-tab="live-vlans">VLANs</button>
+    <button class="tab" data-tab="live-config">Running Config</button>
+    <button class="tab" data-tab="live-events">Events</button>
+  </div>
+
+  <div id="live-interfaces" class="tab-content active">
+    <table class="table">
+      <tr><th>Port</th><th>Status</th><th>Speed</th><th>Duplex</th><th>Netzprofil</th><th>Alias</th></tr>
+      {% for item in interfaces %}
+      <tr>
+        <td>{{ item.port_number }}</td>
+        <td><span class="badge {{ 'up' if item.link_state == 'up' else 'down' }}">{{ item.link_state }}</span></td>
+        <td>{{ item.speed or '-' }}</td>
+        <td>{{ item.duplex or '-' }}</td>
+        <td>
+          {% if item.port_profile == 'switch-port' %}
+            {{ item.switch_name or 'switch' }} · native {{ item.vlan_id or '-' }}{% if item.tagged_vlans %} · tagged {{ item.tagged_vlans|join(',') }}{% endif %}
+          {% elif item.vlan_mode == 'routed' or item.port_profile == 'routed' %}
+            routed
+          {% else %}
+            {{ item.vlan_mode or '-' }}{% if item.vlan_id %} / {{ item.vlan_id }}{% endif %}
+          {% endif %}
+        </td>
+        <td>{{ item.alias or '-' }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <div id="live-vlans" class="tab-content">
+    <table class="table">
+      <tr><th>VLAN</th><th>Name</th><th>Adresse</th><th>Tagged</th><th>Untagged</th><th>Typ</th></tr>
+      {% for item in live_vlans %}
+      <tr>
+        <td>{{ item.vlan_id }}</td>
+        <td>{{ item.name }}</td>
+        <td>{{ item.address or '-' }}</td>
+        <td>{{ item.tagged_ports or '-' }}</td>
+        <td>{{ item.untagged_ports or '-' }}</td>
+        <td>{{ item.membership_type or '-' }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <div id="live-config" class="tab-content">
+    <pre class="code-block">{{ running_config or 'Keine Running-Config verfügbar.' }}</pre>
+  </div>
+
+  <div id="live-events" class="tab-content">
+    <table class="table">
+      <tr><th>Zeit</th><th>Aktion</th><th>Ergebnis</th><th>Details</th><th>Fehler</th></tr>
+      {% for item in events %}
+      <tr>
+        <td>{{ item.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+        <td>{{ item.action }}</td>
+        <td><span class="badge {{ item.result }}">{{ item.result }}</span></td>
+        <td>{{ item.details }}</td>
+        <td>{{ item.error_message or '-' }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+  </div>
+</section>
+{% endblock %}

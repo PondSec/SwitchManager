@@ -1,18 +1,29 @@
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
-from app.models.models import Device
 from app.services.audit_service import write_audit
+from app.services.device_center import load_device_center_snapshot
 from app.utils.device_context import get_selected_device
 from app.utils.driver_factory import get_driver
 
 bp = Blueprint("system", __name__, url_prefix="/system")
 
 
+def _load_snapshot(device):
+    if not device:
+        return None, ""
+    try:
+        return load_device_center_snapshot(device), ""
+    except Exception as exc:  # noqa: BLE001
+        return None, str(exc)
+
+
 @bp.route("/")
 @login_required
 def index():
-    return render_template("system/index.html", device=Device.query.first())
+    device = get_selected_device()
+    snapshot, snapshot_warning = _load_snapshot(device)
+    return render_template("system/index.html", device=device, result=None, snapshot=snapshot, snapshot_warning=snapshot_warning)
 
 
 @bp.route("/action/<string:action>", methods=["POST"])
@@ -27,6 +38,8 @@ def action(action: str):
     driver = get_driver(device)
     result = None
     try:
+        if not dry_run:
+            driver.connect()
         if action == "backup":
             result = driver.backup_config(dry_run=dry_run)
         elif action == "save":
@@ -43,4 +56,5 @@ def action(action: str):
         write_audit(current_user.username, f"system_{action}", device.name, "Systemaktion fehlgeschlagen", "failed", str(exc))
     finally:
         driver.close()
-    return render_template("system/index.html", device=device, result=result)
+    snapshot, snapshot_warning = _load_snapshot(device)
+    return render_template("system/index.html", device=device, result=result, snapshot=snapshot, snapshot_warning=snapshot_warning)

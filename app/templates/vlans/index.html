@@ -2,7 +2,22 @@
 {% block content %}
 <section class="card two-col">
   <div>
-    <h2>VLAN erstellen</h2>
+    <div class="row row-space wrap">
+      <div>
+        <h2>VLANs auf {{ device.name if device else 'keinem Gerät' }}</h2>
+        <p class="muted">Die Tabelle rechts zeigt die zuletzt vom aktuell ausgewählten Gerät gelesenen VLANs.</p>
+      </div>
+      {% if device %}
+      <div class="row wrap">
+        <form method="post" action="{{ url_for('devices.action', device_id=device.id, action='sync') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button class="btn btn-secondary" type="submit">Gerät synchronisieren</button>
+        </form>
+        <a class="btn btn-primary" href="{{ url_for('devices.live_config', device_id=device.id) }}">Live-Konfig</a>
+      </div>
+      {% endif %}
+    </div>
+    <h3 style="margin-top: 1rem;">VLAN erstellen</h3>
     <form method="post" class="grid-form">
       {{ form.hidden_tag() }}
       <label>{{ form.vlan_id.label }}{{ form.vlan_id(class_='input') }}</label>
@@ -15,10 +30,43 @@
     {% endif %}
   </div>
   <div>
-    <h2>VLAN-Liste</h2>
-    <table class="table"><tr><th>ID</th><th>Name</th></tr>
-    {% for v in vlans %}<tr><td>{{ v.vlan_id }}</td><td>{{ v.name }}</td></tr>{% endfor %}
+    <h2>Live-VLAN-Liste</h2>
+    <table class="table">
+      <tr><th>ID</th><th>Name</th><th>Quelle</th><th>Aktion</th></tr>
+      {% for v in vlans %}
+      <tr>
+        <td>{{ v.vlan_id }}</td>
+        <td>{{ v.name }}</td>
+        <td>Switch Sync</td>
+        <td>
+          {% if v.vlan_id != 1 %}
+          <form method="post" action="{{ url_for('vlans.delete', vlan_db_id=v.id) }}" data-confirm="VLAN {{ v.vlan_id }} wirklich löschen?" style="display:inline;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="btn btn-danger" type="submit">Löschen</button>
+          </form>
+          {% else %}
+          <span class="muted">geschützt</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
     </table>
+    {% if live_vlans %}
+    <h3 style="margin-top: 1rem;">Live-Details</h3>
+    <table class="table">
+      <tr><th>ID</th><th>Name</th><th>Untagged</th><th>Tagged</th><th>Typ</th><th>Adresse</th></tr>
+      {% for v in live_vlans %}
+      <tr>
+        <td>{{ v.vlan_id }}</td>
+        <td>{{ v.name }}</td>
+        <td>{{ v.untagged_ports or '-' }}</td>
+        <td>{{ v.tagged_ports or '-' }}</td>
+        <td>{{ v.membership_type or '-' }}</td>
+        <td>{{ v.address or '-' }}</td>
+      </tr>
+      {% endfor %}
+    </table>
+    {% endif %}
   </div>
 </section>
 {% endblock %}

@@ -71,7 +71,7 @@ def ensure_device_inventory(device: Device, port_count: int | None = None) -> tu
         db.session.add(Port(device_id=device.id, port_number=number, admin_enabled=True, link_state="down", vlan_id=1))
         created += 1
 
-    if not VLAN.query.filter_by(device_id=device.id, vlan_id=1).first():
+    if VLAN.query.filter_by(device_id=device.id).count() == 0:
         db.session.add(VLAN(device_id=device.id, vlan_id=1, name="Default"))
 
     if created:
@@ -79,6 +79,42 @@ def ensure_device_inventory(device: Device, port_count: int | None = None) -> tu
 
     total = Port.query.filter_by(device_id=device.id).count()
     return created, total
+
+
+def apply_vlan_snapshot(device: Device, vlans: list[dict] | str) -> int:
+    parsed: list[dict] = []
+    if isinstance(vlans, list):
+        for item in vlans:
+            if "vlan_id" in item:
+                parsed.append({
+                    "vlan_id": int(item["vlan_id"]),
+                    "name": str(item.get("name") or f"VLAN{int(item['vlan_id'])}"),
+                })
+
+    if not parsed:
+        return 0
+
+    existing = {
+        vlan.vlan_id: vlan
+        for vlan in VLAN.query.filter_by(device_id=device.id).all()
+    }
+    seen: set[int] = set()
+
+    for entry in parsed:
+        seen.add(entry["vlan_id"])
+        vlan = existing.get(entry["vlan_id"])
+        if not vlan:
+            vlan = VLAN(device_id=device.id, vlan_id=entry["vlan_id"], name=entry["name"])
+            db.session.add(vlan)
+        else:
+            vlan.name = entry["name"]
+
+    for vlan_id, vlan in existing.items():
+        if vlan_id not in seen:
+            db.session.delete(vlan)
+
+    db.session.commit()
+    return len(parsed)
 
 
 def _parse_port_number(token: str) -> int | None:
@@ -137,6 +173,10 @@ def parse_interface_rows(raw_output: str | list[dict]) -> list[dict]:
                         "admin_enabled": bool(item.get("admin_enabled", True)),
                         "speed": item.get("speed"),
                         "duplex": item.get("duplex"),
+                        "alias": item.get("alias"),
+                        "vlan_id": item.get("vlan_id"),
+                        "vlan_mode": item.get("vlan_mode"),
+                        "poe_enabled": item.get("poe_enabled"),
                     })
                     seen.add(port_number)
             lines.extend(str(item.get("raw", "")).splitlines())
@@ -192,6 +232,14 @@ def apply_interface_snapshot(device: Device, interfaces: list[dict] | str) -> in
             port.speed = entry["speed"]
         if entry.get("duplex"):
             port.duplex = entry["duplex"]
+        if entry.get("alias") is not None:
+            port.alias = str(entry["alias"])
+        if entry.get("vlan_id") is not None:
+            port.vlan_id = int(entry["vlan_id"])
+        if entry.get("vlan_mode"):
+            port.vlan_mode = str(entry["vlan_mode"])
+        if entry.get("poe_enabled") is not None:
+            port.poe_enabled = bool(entry["poe_enabled"])
 
     db.session.commit()
     return len(parsed)

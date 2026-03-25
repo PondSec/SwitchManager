@@ -1,12 +1,95 @@
 {% extends 'base.html' %}
 {% block content %}
+<section class="hero-grid">
+  <article class="hero-card card">
+    <div>
+      <p class="eyebrow">Activity</p>
+      <h2>Audit Trail und Controller-Log in einer operativen Ansicht</h2>
+      <p class="muted">Die Seite fasst Benutzeraktionen, Ergebnisse und Controller-Ausgaben zusammen, damit du Änderungen schneller nachvollziehen und Probleme sauber zurückverfolgen kannst.</p>
+    </div>
+    <form method="get" class="toolbar audit-toolbar">
+      <input class="input" name="username" placeholder="Benutzer" value="{{ filters.username }}">
+      <select class="input" name="result">
+        <option value="">Alle Ergebnisse</option>
+        <option value="success" {% if filters.result == 'success' %}selected{% endif %}>success</option>
+        <option value="failed" {% if filters.result == 'failed' %}selected{% endif %}>failed</option>
+      </select>
+      <button class="btn btn-secondary" type="submit">Filtern</button>
+    </form>
+  </article>
+
+  <article class="card spotlight-card">
+    <p class="eyebrow">Top Aktionen</p>
+    <div class="segment-stack">
+      {% for action, count in action_summary %}
+      <div class="segment-card">
+        <div class="row row-space">
+          <strong>{{ action }}</strong>
+          <span class="tiny-pill">{{ count }}</span>
+        </div>
+      </div>
+      {% endfor %}
+      {% if not action_summary %}
+      <p class="muted">Noch keine Audit-Daten vorhanden.</p>
+      {% endif %}
+    </div>
+  </article>
+</section>
+
+<section class="metric-grid">
+  <article class="metric-card card"><p>Events</p><h3>{{ summary.total }}</h3></article>
+  <article class="metric-card card"><p>Success</p><h3 class="ok">{{ summary.success }}</h3></article>
+  <article class="metric-card card"><p>Failed</p><h3 class="critical">{{ summary.failed }}</h3></article>
+  <article class="metric-card card"><p>Akteure</p><h3>{{ summary.actors }}</h3></article>
+  <article class="metric-card card"><p>Controller Log</p><h3>{{ summary.controller_lines }}</h3></article>
+  <article class="metric-card card"><p>Filter</p><h3>{{ 'aktiv' if filters.username or filters.result else 'alle' }}</h3></article>
+</section>
+
 <section class="card">
-  <h2>Audit Trail</h2>
-  <table class="table">
-    <tr><th>Zeit</th><th>Benutzer</th><th>Aktion</th><th>Ziel</th><th>Ergebnis</th><th>Details</th></tr>
-    {% for l in logs %}
-    <tr><td>{{ l.created_at }}</td><td>{{ l.username }}</td><td>{{ l.action }}</td><td>{{ l.target }}</td><td><span class="badge {{ l.result }}">{{ l.result }}</span></td><td>{{ l.details }}</td></tr>
-    {% endfor %}
-  </table>
+  <div class="tabs">
+    <button class="tab active" data-tab="audit-db">Audit DB</button>
+    <button class="tab" data-tab="audit-file">Controller Log</button>
+  </div>
+
+  <div id="audit-db" class="tab-content active">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Audit DB</p>
+        <h3>Benutzer- und Geräteaktionen</h3>
+      </div>
+      <input class="input section-search" type="search" placeholder="Logs filtern" data-table-filter="audit-db">
+    </div>
+    <table class="table">
+      <thead>
+        <tr><th>Zeit</th><th>Benutzer</th><th>Aktion</th><th>Ziel</th><th>Ergebnis</th><th>Details</th><th>Fehler</th></tr>
+      </thead>
+      <tbody data-filter-body="audit-db">
+        {% for l in logs %}
+        <tr data-filter-row data-filter-text="{{ l.created_at }} {{ l.username }} {{ l.action }} {{ l.target }} {{ l.result }} {{ l.details }} {{ l.error_message }}">
+          <td>{{ l.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+          <td>{{ l.username }}</td>
+          <td>{{ l.action }}</td>
+          <td>{{ l.target }}</td>
+          <td><span class="badge {{ l.result }}">{{ l.result }}</span></td>
+          <td>{{ l.details }}</td>
+          <td>{{ l.error_message or '-' }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      <tbody>
+        <tr data-filter-empty="audit-db" hidden><td colspan="7" class="muted">Keine Treffer.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div id="audit-file" class="tab-content">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Controller Log</p>
+        <h3>Letzte Controller-Zeilen</h3>
+      </div>
+    </div>
+    <pre class="code-block">{{ controller_log|join('') if controller_log else 'Keine Controller-Logs gefunden.' }}</pre>
+  </div>
 </section>
 {% endblock %}

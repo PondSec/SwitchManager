@@ -8,23 +8,17 @@ def ensure_seed_data() -> None:
         user.set_password("admin12345")
         db.session.add(user)
 
-    device = Device.query.filter_by(name="Core-Switch").first()
-    if not device:
-        device = Device(
-            name="Core-Switch",
-            host="192.168.1.10",
-            ssh_port=22,
-            username="admin",
-            password="",
-            model="GS-Serie",
-            firmware="n/a",
-            status="unknown",
-        )
-        db.session.add(device)
-        db.session.flush()
-        for i in range(1, 25):
-            db.session.add(Port(device_id=device.id, port_number=i, link_state="up" if i % 3 == 0 else "down"))
-        db.session.add(VLAN(device_id=device.id, vlan_id=1, name="Default"))
+    sample_device = Device.query.filter_by(
+        name="Core-Switch",
+        host="192.168.1.10",
+        username="admin",
+        model="GS-Serie",
+    ).first()
+    if sample_device:
+        Port.query.filter_by(device_id=sample_device.id).delete()
+        VLAN.query.filter_by(device_id=sample_device.id).delete()
+        db.session.delete(sample_device)
+
     if not NetworkProfile.query.filter_by(name="LAN-Default").first():
         db.session.add(NetworkProfile(
             name="LAN-Default",

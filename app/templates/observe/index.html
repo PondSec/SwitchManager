@@ -1,0 +1,331 @@
+{% extends 'base.html' %}
+{% block title %}Observe{% endblock %}
+{% block content %}
+{% if not device or not snapshot %}
+<section class="hero-grid">
+  <article class="hero-card card">
+    <div>
+      <p class="eyebrow">Observe</p>
+      <h2>Das Observability Center wartet auf ein aktives Gerät</h2>
+      <p class="muted">Sobald ein Switch oder Router ausgewählt ist, bekommst du hier MAC-Tabellen, ARP, LLDP, Traffic-Last, VLAN-Segmente und Discovery grafisch aufbereitet.</p>
+    </div>
+    <div class="row wrap" style="margin-top: 1rem;">
+      <a class="btn btn-primary" href="{{ url_for('devices.index') }}">Gerät auswählen</a>
+    </div>
+  </article>
+
+  <article class="card spotlight-card">
+    <p class="eyebrow">Fleet</p>
+    <div class="fleet-stack">
+      {% for item in fleet_cards %}
+      <a class="fleet-card" href="{{ url_for('observe.device', device_id=item.device.id) }}">
+        <div class="row row-space">
+          <strong>{{ item.device.name }}</strong>
+          <span class="badge {{ item.device.status }}">{{ item.device.status }}</span>
+        </div>
+        <p>{{ item.device.model }}</p>
+        <small>{{ item.ports_up }} / {{ item.ports_total }} Ports up</small>
+      </a>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+{% else %}
+<section class="workspace-hero card">
+  <div class="workspace-hero-copy">
+    <p class="eyebrow">Observe</p>
+    <h2>{{ device.name }}</h2>
+    <p class="muted">{{ snapshot.summary.family }} · {{ snapshot.live_info.model or device.model }} · {{ device.host }} · Firmware {{ snapshot.live_info.firmware or device.firmware }}</p>
+    <div class="row wrap" style="margin-top: 1rem;">
+      <span class="badge {{ device.status }}">{{ device.status }}</span>
+      <span class="badge">Mgmt {{ snapshot.live_info.mgmt_ip or device.mgmt_ip }}</span>
+      <span class="badge">Driver {{ device.driver_type }}</span>
+      <span class="badge">{{ snapshot.summary.traffic_total }} Traffic</span>
+    </div>
+  </div>
+  <div class="workspace-hero-actions">
+    <a class="btn btn-primary" href="{{ url_for('devices.detail', device_id=device.id) }}">Device Center</a>
+    <a class="btn btn-secondary" href="{{ url_for('ports.index') }}">Ports</a>
+    <a class="btn btn-secondary" href="{{ url_for('devices.live_config', device_id=device.id) }}">Live Config</a>
+    <a class="btn btn-secondary" href="{{ url_for('devices.advanced', device_id=device.id) }}">Advanced Config</a>
+  </div>
+</section>
+
+<section class="workspace-shell">
+  <aside class="fleet-rail card">
+    <div class="fleet-rail-head">
+      <h3>Geräte im Fokus</h3>
+      <p class="muted">Direkter Wechsel zwischen Live-Ansichten im Fleet.</p>
+    </div>
+    <div class="fleet-stack">
+      {% for item in fleet_cards %}
+      <a class="fleet-card{% if item.device.id == device.id %} active{% endif %}" href="{{ url_for('observe.device', device_id=item.device.id) }}">
+        <div class="row row-space">
+          <strong>{{ item.device.name }}</strong>
+          <span class="badge {{ item.device.status }}">{{ item.device.status }}</span>
+        </div>
+        <p>{{ item.device.model }}</p>
+        <small>{{ item.ports_up }} / {{ item.ports_total }} Ports up</small>
+      </a>
+      {% endfor %}
+    </div>
+  </aside>
+
+  <div class="workspace-main">
+    {% if snapshot.warnings %}
+    <section class="card notice-card">
+      <h3>Hinweise</h3>
+      <ul>
+        {% for warning in snapshot.warnings %}
+        <li>{{ warning }}</li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+    <section class="metric-grid">
+      <article class="metric-card card"><p>Ports Up</p><h3>{{ snapshot.summary.ports_up }} / {{ snapshot.summary.ports_total }}</h3></article>
+      <article class="metric-card card"><p>Clients</p><h3>{{ snapshot.summary.clients_total }}</h3></article>
+      <article class="metric-card card"><p>VLANs</p><h3>{{ snapshot.summary.vlans_total }}</h3></article>
+      <article class="metric-card card"><p>MAC</p><h3>{{ snapshot.summary.mac_total }}</h3></article>
+      <article class="metric-card card"><p>ARP</p><h3>{{ snapshot.summary.arp_total }}</h3></article>
+      <article class="metric-card card"><p>DHCP</p><h3>{{ snapshot.summary.dhcp_total }}</h3></article>
+    </section>
+
+    <section class="workspace-columns">
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Traffic</p>
+            <h3>Top Interfaces</h3>
+          </div>
+        </div>
+        <div class="traffic-list">
+          {% for row in snapshot.traffic_rows[:8] %}
+          {% set max_total = snapshot.traffic_rows[0].total_bytes if snapshot.traffic_rows else 1 %}
+          <div class="traffic-row">
+            <div>
+              <strong>{{ row.name }}</strong>
+              <p class="muted">{{ row.description or row.link_state }}</p>
+            </div>
+            <div class="traffic-meta">
+              <span>RX {{ row.rx_human }}</span>
+              <span>TX {{ row.tx_human }}</span>
+              <span>Errors {{ row.errors }}</span>
+            </div>
+            <div class="traffic-bar"><span style="width: {{ (row.total_bytes / (max_total or 1) * 100)|round(1) }}%"></span></div>
+          </div>
+          {% endfor %}
+          {% if not snapshot.traffic_rows %}
+          <p class="muted">Keine Traffic-Daten verfügbar.</p>
+          {% endif %}
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Discovery</p>
+            <h3>Signals & Services</h3>
+          </div>
+        </div>
+        <div class="mini-metric-grid">
+          {% for item in snapshot.discovery_cards %}
+          <div class="mini-metric-card">
+            <span>{{ item.label }}</span>
+            <strong>{{ item.count }}</strong>
+          </div>
+          {% endfor %}
+        </div>
+        <div class="alert-stack" style="margin-top: 1rem;">
+          {% for alert in snapshot.alerts %}
+          <div class="alert-item">{{ alert }}</div>
+          {% endfor %}
+          {% if not snapshot.alerts %}
+          <div class="alert-item ok">Keine akuten Auffälligkeiten erkannt.</div>
+          {% endif %}
+        </div>
+        {% if snapshot.offload_status %}
+        <div class="inline-metrics" style="margin-top: 1rem;">
+          <div><span>Traffic Export</span><strong>{{ snapshot.offload_status.traffic_export }}</strong></div>
+          <div><span>DPI</span><strong>{{ snapshot.offload_status.dpi }}</strong></div>
+          <div><span>Routes</span><strong>{{ snapshot.summary.routes_total }}</strong></div>
+        </div>
+        {% endif %}
+      </article>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <div>
+          <p class="eyebrow">Fabric</p>
+          <h3>Port Heatmap</h3>
+        </div>
+      </div>
+      <div class="fabric-port-grid">
+        {% for port in snapshot.port_cards %}
+        <div class="fabric-port-card {{ port.link_state }} {{ port.health_state }}{% if not port.admin_enabled %} disabled{% endif %}">
+          <div class="row row-space">
+            <strong>Port {{ port.port_number }}</strong>
+            <span class="tiny-pill">{{ port.traffic_human }}</span>
+          </div>
+          <p>{{ port.label }}</p>
+          <small>{{ port.vlan_label }}</small>
+          <div class="fabric-port-meta">
+            <span>{{ port.speed or '-' }}</span>
+            <span>{{ port.client_count }} Clients</span>
+            <span>{{ 'PoE' if port.poe_enabled else 'No PoE' }}</span>
+          </div>
+          {% if port.neighbor_name %}
+          <div class="neighbor-pill">LLDP {{ port.neighbor_name }}</div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="workspace-columns wide">
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Clients</p>
+            <h3>Client Inventory</h3>
+          </div>
+          <input class="input section-search" type="search" placeholder="Clients filtern" data-table-filter="observe-clients">
+        </div>
+        <table class="table">
+          <thead>
+            <tr><th>Name</th><th>IP</th><th>MAC</th><th>Network</th><th>Attachment</th><th>Quelle</th></tr>
+          </thead>
+          <tbody data-filter-body="observe-clients">
+            {% for client in snapshot.clients[:80] %}
+            <tr data-filter-row data-filter-text="{{ client.name }} {{ client.ip }} {{ client.mac }} {{ client.network }} {{ client.attachment }} {{ client.source }}">
+              <td>{{ client.name }}</td>
+              <td>{{ client.ip or '-' }}</td>
+              <td>{{ client.mac or '-' }}</td>
+              <td>{{ client.network }}</td>
+              <td>{{ client.attachment }}</td>
+              <td>{{ client.source }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tbody>
+            <tr data-filter-empty="observe-clients" hidden><td colspan="6" class="muted">Keine Treffer.</td></tr>
+            {% if not snapshot.clients %}
+            <tr><td colspan="6" class="muted">Keine Clients sichtbar.</td></tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </article>
+
+      <article class="card">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Networks</p>
+            <h3>VLAN Segments</h3>
+          </div>
+        </div>
+        <div class="segment-stack">
+          {% for vlan in snapshot.vlan_cards %}
+          <div class="segment-card">
+            <div class="row row-space">
+              <strong>{{ vlan.name }}</strong>
+              <span class="tiny-pill">{{ vlan.client_count }} Clients</span>
+            </div>
+            <p>{{ vlan.label }}</p>
+            <small>{{ vlan.address or 'ohne Layer-3-Adresse' }}</small>
+            <div class="segment-meta">
+              <span>Tagged {{ vlan.tagged_ports or '-' }}</span>
+              <span>Untagged {{ vlan.untagged_ports or '-' }}</span>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </article>
+    </section>
+
+    <section class="card">
+      <div class="tabs">
+        <button class="tab active" data-tab="observe-mac">MAC</button>
+        <button class="tab" data-tab="observe-arp">ARP</button>
+        <button class="tab" data-tab="observe-lldp">LLDP</button>
+        <button class="tab" data-tab="observe-routes">Routes</button>
+        <button class="tab" data-tab="observe-dhcp">DHCP</button>
+      </div>
+
+      <div id="observe-mac" class="tab-content active">
+        <table class="table">
+          <tr><th>VLAN</th><th>MAC</th><th>Typ</th><th>Port</th></tr>
+          {% for row in snapshot.mac_table %}
+          <tr><td>{{ row.vlan_id }}</td><td>{{ row.mac }}</td><td>{{ row.entry_type }}</td><td>{{ row.port }}</td></tr>
+          {% endfor %}
+          {% if not snapshot.mac_table %}
+          <tr><td colspan="4" class="muted">Keine MAC-Tabelle verfügbar.</td></tr>
+          {% endif %}
+        </table>
+      </div>
+
+      <div id="observe-arp" class="tab-content">
+        <table class="table">
+          <tr><th>IP</th><th>MAC</th><th>Interface</th><th>Status</th></tr>
+          {% for row in snapshot.arp_table %}
+          <tr><td>{{ row.ip }}</td><td>{{ row.mac }}</td><td>{{ row.interface }}</td><td>{{ row.status }}</td></tr>
+          {% endfor %}
+          {% if not snapshot.arp_table %}
+          <tr><td colspan="4" class="muted">Keine ARP-Tabelle verfügbar.</td></tr>
+          {% endif %}
+        </table>
+      </div>
+
+      <div id="observe-lldp" class="tab-content">
+        <table class="table">
+          <tr><th>Port</th><th>System</th><th>Device ID</th><th>Remote Port</th><th>TTL</th></tr>
+          {% for row in snapshot.lldp_neighbors %}
+          <tr><td>{{ row.port_number }}</td><td>{{ row.sys_name or '-' }}</td><td>{{ row.device_id or '-' }}</td><td>{{ row.remote_port_id or '-' }}</td><td>{{ row.ttl or '-' }}</td></tr>
+          {% endfor %}
+          {% if not snapshot.lldp_neighbors %}
+          <tr><td colspan="5" class="muted">Keine LLDP-Nachbarn sichtbar.</td></tr>
+          {% endif %}
+        </table>
+      </div>
+
+      <div id="observe-routes" class="tab-content">
+        <table class="table">
+          <tr><th>Protokoll</th><th>Prefix</th><th>Next Hop</th><th>Interface</th><th>Status</th></tr>
+          {% for row in snapshot.routes %}
+          <tr>
+            <td>{{ row.protocol }}</td>
+            <td>{{ row.prefix }}</td>
+            <td>{{ row.next_hop or '-' }}</td>
+            <td>{{ row.interface or '-' }}</td>
+            <td>{% if row.selected %}selected{% else %}-{% endif %}</td>
+          </tr>
+          {% endfor %}
+          {% if not snapshot.routes %}
+          <tr><td colspan="5" class="muted">Keine Routing-Tabelle verfügbar.</td></tr>
+          {% endif %}
+        </table>
+      </div>
+
+      <div id="observe-dhcp" class="tab-content">
+        <table class="table">
+          <tr><th>Name</th><th>IP</th><th>MAC</th><th>Pool</th><th>Lease</th></tr>
+          {% for row in snapshot.dhcp_leases %}
+          <tr>
+            <td>{{ row.client_name or '-' }}</td>
+            <td>{{ row.ip or '-' }}</td>
+            <td>{{ row.mac or '-' }}</td>
+            <td>{{ row.pool or '-' }}</td>
+            <td>{{ row.lease_expires or '-' }}</td>
+          </tr>
+          {% endfor %}
+          {% if not snapshot.dhcp_leases %}
+          <tr><td colspan="5" class="muted">Keine DHCP-Leases verfügbar.</td></tr>
+          {% endif %}
+        </table>
+      </div>
+    </section>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

@@ -50,19 +50,25 @@
   <main class="main-stage">
     <header class="topbar">
       <div class="topbar-left">
-        <p class="muted top-context">Site · NOC-HQ</p>
+        <p class="muted top-context">{% if selected_device %}{{ selected_device.name }} · {{ selected_device.host }}{% else %}Fleet · Network Device Center{% endif %}</p>
         <h1>{{ page_title }}</h1>
       </div>
+      <div class="topbar-center">
+        <label class="device-picker-shell">
+          <span>Aktives Gerät</span>
+          <select id="device-switch" class="input">
+            {% for device in all_devices %}
+            <option value="{{ device.id }}" {% if selected_device and selected_device.id == device.id %}selected{% endif %}>{{ device.name }} · {{ device.host }}</option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
       <div class="topbar-right">
-        <button type="button" class="top-action" data-toggle="search-panel" aria-label="Suche">
-          <i data-lucide="search"></i>
-        </button>
-        <button type="button" class="top-action" data-toggle="notifications-menu" aria-label="Benachrichtigungen">
-          <i data-lucide="bell"></i>
-        </button>
-        <button type="button" class="top-action" data-toggle="status-menu" aria-label="Status">
-          <i data-lucide="shield-check"></i>
-        </button>
+        {% if selected_device %}
+        <a class="top-link" href="{{ url_for('observe.index') }}">Observe</a>
+        <a class="top-link" href="{{ url_for('devices.advanced', device_id=selected_device.id) }}">Config</a>
+        {% endif %}
+        <button type="button" class="top-action" data-toggle="search-panel" aria-label="Suche"><i data-lucide="search"></i></button>
         <div class="menu-wrap">
           <button type="button" class="top-action user-action" data-toggle="user-menu" aria-label="User Menü">{{ current_user.username[:1]|upper if current_user.is_authenticated else 'U' }}</button>
           <div class="dropdown" id="user-menu">
@@ -79,15 +85,6 @@
     <section class="interactive-trays">
       <div class="tray" id="search-panel">
         <input id="global-search" class="input" placeholder="Device, Host, Port oder Event suchen...">
-      </div>
-      <div class="tray" id="notifications-menu">
-        <p>Letzte Aktionen</p>
-        <a href="{{ url_for('audit.index') }}">Audit Log öffnen</a>
-        <a href="{{ url_for('system.index') }}">System Wartung öffnen</a>
-      </div>
-      <div class="tray" id="status-menu">
-        <p>Controller Status: <strong>Online</strong></p>
-        <a href="{{ url_for('dashboard.index') }}">Dashboard</a>
       </div>
     </section>
 

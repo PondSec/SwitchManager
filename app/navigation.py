@@ -14,12 +14,13 @@ class NavItem:
 
 
 PRIMARY_NAV: list[NavItem] = [
-    NavItem("Dashboard", "dashboard.index", "layout-dashboard"),
+    NavItem("Overview", "dashboard.index", "layout-dashboard"),
     NavItem("Devices", "devices.index", "server"),
-    NavItem("Network", "networks.index", "network"),
-    NavItem("Clients", "vlans.index", "users"),
-    NavItem("Insights", "audit.index", "activity"),
-    NavItem("Logs", "system.index", "file-text"),
+    NavItem("Observe", "observe.index", "radar"),
+    NavItem("Ports", "ports.index", "splits"),
+    NavItem("Networks", "networks.index", "network"),
+    NavItem("Activity", "audit.index", "activity"),
+    NavItem("Maintenance", "system.index", "file-text"),
     NavItem("Settings", "settings.index", "settings"),
 ]
 
@@ -50,14 +51,17 @@ SETTINGS_NAV: list[NavItem] = [
 ]
 
 PAGE_TITLES = {
-    "dashboard.index": "Dashboard",
+    "dashboard.index": "Overview",
     "devices.index": "Devices",
-    "devices.detail": "Device Details",
-    "ports.index": "Port Management",
-    "vlans.index": "Clients",
-    "networks.index": "Network",
-    "audit.index": "Insights",
-    "system.index": "Logs",
+    "devices.detail": "Device Center",
+    "devices.advanced": "Advanced Config",
+    "observe.index": "Observe",
+    "observe.device": "Observe",
+    "ports.index": "Ports",
+    "vlans.index": "VLANs",
+    "networks.index": "Networks",
+    "audit.index": "Activity",
+    "system.index": "Maintenance",
     "settings.index": "Settings",
     "settings.section": "Settings",
     "auth.users": "Settings · Admins",
@@ -69,4 +73,6 @@ def get_primary_active(endpoint: str | None) -> str:
         return "dashboard"
     if endpoint.startswith("settings") or endpoint.startswith("auth.users"):
         return "settings"
+    if endpoint.startswith("observe"):
+        return "observe"
     return endpoint.split(".")[0]

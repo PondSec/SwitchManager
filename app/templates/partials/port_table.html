@@ -7,7 +7,7 @@
     <td>{{ 'on' if p.admin_enabled else 'off' }}</td>
     <td>{{ p.speed }}</td>
     <td>{{ p.duplex }}</td>
-    <td>{{ p.vlan_mode }} / {{ p.vlan_id }}</td>
+    <td>{% if p.vlan_mode == 'routed' %}routed{% else %}{{ p.vlan_mode }} / {{ p.vlan_id }}{% endif %}</td>
   </tr>
   {% endfor %}
 </table>

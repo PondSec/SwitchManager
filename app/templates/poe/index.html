@@ -3,6 +3,12 @@
 <section class="card two-col">
   <div>
     <h2>PoE Verwaltung (vorbereitet)</h2>
+    {% if device and device.driver_type == 'edgeos-ssh' %}
+    <p class="muted">Beim EdgeRouter X ist Port 1 `PoE In` und nur fuer die Stromversorgung des Routers gedacht. Port 5 `PoE Out` ist passives 24V-Passthrough und haengt von der Eingangsstromquelle ab.</p>
+    {% endif %}
+    {% if device and ports and poe_supported_count == 0 %}
+    <p class="muted">Auf dem aktuell gewaehlten Geraet ist PoE nicht als sicher schaltbare Funktion verfuegbar.</p>
+    {% endif %}
     <form method="post" class="grid-form">
       {{ form.hidden_tag() }}
       <label>{{ form.port_number.label }}{{ form.port_number(class_='input') }}</label>
@@ -14,9 +20,19 @@
   </div>
   <div>
     <h2>PoE Status</h2>
-    <table class="table"><tr><th>Port</th><th>PoE</th></tr>
-      {% for p in ports %}<tr><td>{{ p.port_number }}</td><td>{{ 'an' if p.poe_enabled else 'aus' }}</td></tr>{% endfor %}
+    <table class="table"><tr><th>Port</th><th>PoE</th><th>Rolle</th><th>Support</th></tr>
+      {% for p in ports %}<tr><td>{{ p.port_number }}</td><td>{{ 'an' if p.poe_enabled else 'aus' }}</td><td>{{ 'PoE In' if poe_role_map.get(p.port_number) == 'input' else 'PoE Out' if poe_role_map.get(p.port_number) == 'output' else '-' }}</td><td>{% if poe_support_map.get(p.port_number, True) %}schaltbar{% elif poe_role_map.get(p.port_number) == 'input' %}nur Eingang{% else %}nicht unterstuetzt{% endif %}</td></tr>{% endfor %}
     </table>
+    {% if poe_note_map %}
+    <div class="event-stack" style="margin-top: 1rem;">
+      {% for p in ports if poe_note_map.get(p.port_number) %}
+      <div class="event-item">
+        <strong>Port {{ p.port_number }}</strong>
+        <p>{{ poe_note_map.get(p.port_number) }}</p>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
   </div>
 </section>
 {% endblock %}

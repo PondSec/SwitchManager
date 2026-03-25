@@ -1,17 +1,128 @@
 {% extends 'base.html' %}
 {% block content %}
+<section class="hero-grid">
+  <article class="hero-card card">
+    <div>
+      <p class="eyebrow">Maintenance</p>
+      <h2>Wartung, Persistenz und Gerätesicherheit an einem Ort</h2>
+      <p class="muted">Diese Fläche bündelt die klassischen Administrationsabläufe so, dass sie wie ein klarer Workflow wirken und nicht wie einzelne versteckte Actions.</p>
+    </div>
+    {% if device %}
+    <div class="row wrap" style="margin-top: 1rem;">
+      <a class="btn btn-primary" href="{{ url_for('devices.detail', device_id=device.id) }}">Device Center</a>
+      <a class="btn btn-secondary" href="{{ url_for('devices.live_config', device_id=device.id) }}">Live Config</a>
+      <a class="btn btn-secondary" href="{{ url_for('observe.device', device_id=device.id) }}">Observe</a>
+    </div>
+    {% endif %}
+  </article>
+
+  <article class="card spotlight-card">
+    <p class="eyebrow">Gerät</p>
+    {% if device %}
+    <h3>{{ device.name }}</h3>
+    <p class="muted">{{ device.host }} · {{ device.driver_type }}</p>
+    <div class="inline-metrics" style="margin-top: 1rem;">
+      <div><span>Status</span><strong>{{ device.status }}</strong></div>
+      <div><span>Firmware</span><strong>{{ snapshot.live_info.firmware if snapshot and snapshot.live_info.firmware else device.firmware }}</strong></div>
+      <div><span>Mgmt</span><strong>{{ snapshot.live_info.mgmt_ip if snapshot and snapshot.live_info.mgmt_ip else device.host }}</strong></div>
+    </div>
+    {% else %}
+    <p class="muted">Kein aktives Gerät ausgewählt.</p>
+    {% endif %}
+  </article>
+</section>
+
+{% if snapshot_warning %}
+<section class="card notice-card">
+  <h3>Hinweis</h3>
+  <p class="muted">{{ snapshot_warning }}</p>
+</section>
+{% endif %}
+
+{% if device %}
+<section class="metric-grid">
+  <article class="metric-card card"><p>Ports Up</p><h3>{{ snapshot.summary.ports_up if snapshot else '-' }}</h3></article>
+  <article class="metric-card card"><p>Clients</p><h3>{{ snapshot.summary.clients_total if snapshot else '-' }}</h3></article>
+  <article class="metric-card card"><p>Alerts</p><h3>{{ snapshot.summary.alerts_total if snapshot else '-' }}</h3></article>
+  <article class="metric-card card"><p>Traffic</p><h3>{{ snapshot.summary.traffic_total if snapshot else '-' }}</h3></article>
+  <article class="metric-card card"><p>VLANs</p><h3>{{ snapshot.summary.vlans_total if snapshot else '-' }}</h3></article>
+  <article class="metric-card card"><p>LLDP</p><h3>{{ snapshot.summary.neighbors_total if snapshot else '-' }}</h3></article>
+</section>
+
+<section class="workspace-columns wide">
+  <article class="card">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Actions</p>
+        <h3>Wartungsaktionen</h3>
+      </div>
+    </div>
+    <div class="maintenance-grid">
+      <form class="action-card" method="post" action="{{ url_for('system.action', action='save') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="dry_run" value="1">
+        <strong>Save Vorschau</strong>
+        <p>Prüft den Persistenzpfad und zeigt die geplanten Befehle an.</p>
+        <button class="btn btn-secondary">Dry-Run starten</button>
+      </form>
+
+      <form class="action-card" method="post" action="{{ url_for('system.action', action='backup') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="dry_run" value="1">
+        <strong>Backup Vorschau</strong>
+        <p>Erzeugt einen sicheren Vorab-Check für Backup und Export.</p>
+        <button class="btn btn-secondary">Backup prüfen</button>
+      </form>
+
+      <form class="action-card" method="post" action="{{ url_for('system.action', action='reboot') }}" data-confirm="Reboot wirklich durchführen?">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="dry_run" value="1">
+        <strong>Reboot Vorschau</strong>
+        <p>Simuliert den Neustart-Ablauf, bevor du produktiv eingreifst.</p>
+        <button class="btn btn-danger">Reboot prüfen</button>
+      </form>
+    </div>
+  </article>
+
+  <article class="card">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Posture</p>
+        <h3>Gerätegesundheit</h3>
+      </div>
+    </div>
+    {% if snapshot and snapshot.alerts %}
+    <div class="alert-stack">
+      {% for alert in snapshot.alerts %}
+      <div class="alert-item">{{ alert }}</div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty-state-card">
+      <p class="muted">Keine akuten Auffälligkeiten erkannt.</p>
+    </div>
+    {% endif %}
+  </article>
+</section>
+
+{% if result %}
 <section class="card">
-  <h2>System</h2>
-  {% if device %}
-  <p>Hostname: {{ device.name }} · Management-IP: {{ device.host }}</p>
-  <div class="row">
-    <form method="post" action="{{ url_for('system.action', action='save') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="dry_run" value="1"><button class="btn btn-secondary">Save Vorschau</button></form>
-    <form method="post" action="{{ url_for('system.action', action='backup') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="dry_run" value="1"><button class="btn btn-secondary">Backup Vorschau</button></form>
-    <form method="post" action="{{ url_for('system.action', action='reboot') }}" data-confirm="Reboot wirklich durchführen?"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><input type="hidden" name="dry_run" value="1"><button class="btn btn-danger">Reboot Vorschau</button></form>
+  <div class="section-head">
+    <div>
+      <p class="eyebrow">Result</p>
+      <h3>Letztes Wartungsergebnis</h3>
+    </div>
   </div>
-  {% if result %}<pre class="code-block">{{ result.commands|join('\n') }}</pre>{% endif %}
-  {% else %}
-  <p>Kein Gerät vorhanden.</p>
+  <pre class="code-block">{{ result.commands|join('\n') }}</pre>
+  {% if result.output %}
+  <pre class="code-block">{{ result.output|join('\n\n') }}</pre>
   {% endif %}
 </section>
+{% endif %}
+{% else %}
+<section class="card empty-state-card">
+  <h3>Kein Gerät vorhanden</h3>
+  <p class="muted">Wähle zuerst ein aktives Gerät aus, damit Wartung und sichere Vorschauaktionen verfügbar werden.</p>
+</section>
+{% endif %}
 {% endblock %}

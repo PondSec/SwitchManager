@@ -21,23 +21,38 @@ if (modal) {
   });
 }
 
+document.querySelectorAll('.frontpanel .port[data-port-id], .port-edit-btn[data-port-id]').forEach((button) => {
+  button.addEventListener('click', (event) => {
+    event.preventDefault();
+    const portId = Number(button.dataset.portId);
+    if (!Number.isFinite(portId)) return;
+    openPortDrawer(portId);
+  });
+});
+
 const workspace = document.getElementById('ports-workspace');
 
 if (workspace) {
+  const csrfToken = workspace.dataset.csrfToken || '';
   const portsRack = document.getElementById('ports-rack');
   const selectedLine = document.getElementById('ports-selected-line');
   const panel = document.getElementById('port-config-panel');
   const infoLine = document.getElementById('config-info');
+  const feedback = document.getElementById('ports-feedback');
   const form = document.getElementById('multi-port-form');
+  const applyButton = document.getElementById('apply-changes');
   const nativeVlanSelect = document.getElementById('vlan-native');
   const taggedVlanSelect = document.getElementById('tagged-vlans');
   const taggedRow = document.getElementById('custom-tagged-row');
   const manualFields = document.getElementById('manual-fields');
+  const poeInputs = [...document.querySelectorAll('input[name="poeMode"]')];
   const cancelBtn = document.getElementById('cancel-changes');
   const selectAllBtn = workspace.querySelector('[data-action="select-all"]');
   const deselectAllBtn = workspace.querySelector('[data-action="deselect-all"]');
   const detailBody = document.getElementById('ports-detail-body');
   const filterInputs = [...workspace.querySelectorAll('#ports-filters input[type="checkbox"]')];
+  const tabButtons = [...workspace.querySelectorAll('.ports-tab[data-view]')];
+  const viewPanels = [...workspace.querySelectorAll('[data-view-panel]')];
 
   const state = {
     ports: JSON.parse(workspace.dataset.ports || '[]'),
@@ -45,6 +60,7 @@ if (workspace) {
     selected: new Set(),
     anchor: null,
     draft: null,
+    currentView: 'ports',
   };
 
   const vlanLabel = (id) => {
@@ -55,9 +71,10 @@ if (workspace) {
   const speedLabel = (port) => {
     if (port.portNumber > 48) return '10 GbE';
     const speed = String(port.speed || '').toLowerCase();
-    if (speed.includes('10')) return '10 GbE';
-    if (speed.includes('2.5')) return '2.5 GbE';
-    if (speed.includes('100m') || speed === 'fe') return 'FE';
+    if (speed.includes('10000') || speed.includes('10gb') || speed === '10g') return '10 GbE';
+    if (speed.includes('2500') || speed.includes('2.5g')) return '2.5 GbE';
+    if (speed.includes('1000') || speed.includes('1g') || speed.includes('1000m')) return 'GbE';
+    if ((speed.includes('100m') && !speed.includes('1000m')) || speed === 'fe') return 'FE';
     return 'GbE';
   };
 
@@ -105,7 +122,26 @@ if (workspace) {
 
   const renderSelectionLine = () => {
     const numbers = sortedSelectedNumbers();
-    selectedLine.textContent = numbers.length ? `Ports ${numbers.join(', ')}` : 'No ports selected';
+    selectedLine.textContent = numbers.length ? `Ausgewählt: Port ${numbers.join(', ')}` : 'Keine Ports ausgewählt';
+  };
+
+  const setFeedback = (message, tone = 'info') => {
+    if (!feedback) return;
+    feedback.hidden = !message;
+    feedback.textContent = message || '';
+    feedback.dataset.tone = tone;
+  };
+
+  const activateView = (viewName) => {
+    state.currentView = viewName;
+    tabButtons.forEach((button) => {
+      const active = button.dataset.view === viewName;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    viewPanels.forEach((panelEl) => {
+      panelEl.hidden = panelEl.dataset.viewPanel !== viewName;
+    });
   };
 
   const applyDraftToForm = () => {
@@ -163,8 +199,13 @@ if (workspace) {
       };
     }
 
+    const allPoeSupported = selectedPorts.every((port) => port.poeSupported !== false);
+    poeInputs.forEach((input) => {
+      input.disabled = !allPoeSupported;
+    });
+
     panel.hidden = false;
-    infoLine.textContent = `Displaying the configuration for port ${selectedPorts[0].portNumber} which will be applied to all selected ports.`;
+    infoLine.textContent = `Die gezeigte Konfiguration basiert auf Port ${selectedPorts[0].portNumber} und wird auf alle ausgewählten Ports angewendet.${allPoeSupported ? '' : ' PoE ist fuer die aktuelle Auswahl nicht verfuegbar.'}`;
     applyDraftToForm();
   };
 
@@ -175,8 +216,8 @@ if (workspace) {
         const selected = state.selected.has(port.id) ? 'selected' : '';
         const statusClass = portClass(port);
         const poe = port.poeMode === 'poe_plus' ? '<i class="poe-icon" data-lucide="zap"></i>' : '';
-        const device = port.connectedDevice ? '<i class="device-icon" data-lucide="plug"></i>' : '';
-        return `<button type="button" class="port-tile ${statusClass} ${selected}" data-port-id="${port.id}" title="Port ${port.portNumber} | ${vlanLabel(port.vlanNative)}">${poe}${device}<span>${port.portNumber}</span></button>`;
+        const device = (port.connectedDevice || port.clientCount) ? '<i class="device-icon" data-lucide="plug"></i>' : '';
+        return `<button type="button" class="port-tile ${statusClass} ${selected}" data-port-id="${port.id}" title="Port ${port.portNumber} | ${port.vlanLabel || vlanLabel(port.vlanNative)}">${poe}${device}<span>${port.portNumber}</span></button>`;
       })
       .join('');
 
@@ -227,26 +268,33 @@ if (workspace) {
 
   const renderTable = () => {
     const rows = state.ports.filter(shouldIncludePort).map((port) => {
-      const label = port.portNumber > 48 ? `SFP+${port.portNumber - 48}` : `Port-${port.portNumber}`;
+      const defaultLabel = port.portNumber > 48 ? `SFP+${port.portNumber - 48}` : `Port ${port.portNumber}`;
+      const label = port.alias || defaultLabel;
       const connected = port.connectedDevice || '-';
-      const profile = port.profile === 'manual' ? 'Manual' : 'Auto';
-      const activityPct = Math.max(8, Math.min(95, parseFloat(port.txRate) || 8));
+      const activityPct = Math.max(6, Math.min(100, Number(port.activityPercent) || 0));
+      const status = port.status === 'disabled' ? 'Disabled' : (port.linkState === 'up' ? 'Up' : 'Down');
+      const poeLabel = port.poeRole === 'input'
+        ? 'PoE In'
+        : port.poeRole === 'output'
+          ? (port.poeMode === 'poe_plus' ? 'PoE Out On' : 'PoE Out')
+          : '-';
       return `<tr>
         <td>${port.portNumber}</td>
         <td>${label}</td>
-        <td>🔒</td>
-        <td>${port.poeMode === 'poe_plus' ? 'PoE+' : '-'}</td>
+        <td>${status}</td>
+        <td title="${port.poeNote || port.poeReason || ''}">${poeLabel}</td>
         <td>${speedLabel(port)}</td>
+        <td>${port.vlanLabel || vlanLabel(port.vlanNative)}</td>
         <td>${connected}</td>
-        <td>${profile}</td>
+        <td>${port.clientCount || 0}</td>
         <td><div class="activity-bar"><span style="width:${activityPct}%"></span></div></td>
-        <td>${port.txRate === '0 Mbps' ? '0.0 GB' : port.txRate}</td>
-        <td>${port.rxRate === '0 Mbps' ? '0.0 GB' : port.rxRate}</td>
-        <td>${port.txRate}</td>
+        <td>${port.txRate || '0 B'}</td>
+        <td>${port.rxRate || '0 B'}</td>
+        <td>${port.trafficHuman || '0 B'}</td>
       </tr>`;
     }).join('');
 
-    detailBody.innerHTML = rows || '<tr><td colspan="11" class="muted">No matching ports.</td></tr>';
+    detailBody.innerHTML = rows || '<tr><td colspan="12" class="muted">Keine Ports passend zum aktuellen Filter.</td></tr>';
   };
 
   form.addEventListener('change', updateDraftFromForm);
@@ -254,6 +302,7 @@ if (workspace) {
   cancelBtn.addEventListener('click', () => {
     state.draft = null;
     renderPanel();
+    setFeedback('');
   });
 
   form.addEventListener('submit', async (event) => {
@@ -261,29 +310,51 @@ if (workspace) {
     if (!state.selected.size || !state.draft) return;
 
     updateDraftFromForm();
+    const selectedPorts = sortedSelectedNumbers();
     const payload = {
       portIds: [...state.selected],
       updates: state.draft,
     };
 
-    const response = await fetch('/ports/bulk-update', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      return;
+    if (applyButton) {
+      applyButton.disabled = true;
+      applyButton.textContent = 'Wird angewendet...';
     }
+    setFeedback(`Änderungen für Port ${selectedPorts.join(', ')} werden angewendet...`, 'info');
 
-    const data = await response.json();
-    const updated = new Map((data.ports || []).map((port) => [port.id, port]));
-    state.ports = state.ports.map((port) => updated.get(port.id) || port);
+    try {
+      const response = await fetch('/ports/bulk-update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify(payload),
+      });
 
-    renderPorts();
-    renderTable();
-    renderSelectionLine();
-    renderPanel();
+      if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({}));
+        const message = errorPayload.error || 'Port-Update fehlgeschlagen.';
+        setFeedback(message, 'error');
+        window.alert(message);
+        return;
+      }
+
+      const data = await response.json();
+      const updated = new Map((data.ports || []).map((port) => [port.id, port]));
+      state.ports = state.ports.map((port) => updated.get(port.id) || port);
+
+      renderPorts();
+      renderTable();
+      renderSelectionLine();
+      renderPanel();
+      setFeedback(`Port ${selectedPorts.join(', ')} aktualisiert. Wenn ein aktivierter Port ohne Kabel bleibt, erscheint er weiter als Down statt Disabled.`, 'success');
+    } finally {
+      if (applyButton) {
+        applyButton.disabled = false;
+        applyButton.textContent = 'Änderungen anwenden';
+      }
+    }
   });
 
   selectAllBtn.addEventListener('click', () => {
@@ -322,7 +393,14 @@ if (workspace) {
     });
   });
 
+  tabButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      activateView(button.dataset.view || 'ports');
+    });
+  });
+
   renderVlanOptions();
+  activateView('ports');
   renderPorts();
   renderTable();
   renderSelectionLine();
