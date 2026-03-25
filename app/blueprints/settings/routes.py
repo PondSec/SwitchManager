@@ -115,6 +115,7 @@ SETTINGS_SECTIONS = {
                     {"value": "auto-add", "label": "auto-add (einfach)"},
                 ],
             },
+            {"key": "snmp_community", "label": "SNMP Community (Fallback)", "type": "text", "placeholder": "public"},
             {"key": "debug_mode", "label": "Debug Mode", "type": "checkbox"},
         ],
     },
@@ -184,6 +185,7 @@ def section(section_slug: str):
 
     if section_slug == "controller":
         settings_map.setdefault("ssh_host_key_policy", "reject")
+        settings_map.setdefault("snmp_community", "public")
 
     if request.method == "POST":
         for field in section_meta["fields"]:

@@ -3,9 +3,10 @@ from flask_login import current_user, login_required
 
 from app.extensions import db
 from app.forms.device_forms import DeviceForm
-from app.models.models import AuditLog, Device, NetworkProfile, Port, VLAN
+from app.models.models import AppSetting, AuditLog, Device, NetworkProfile, Port, VLAN
 from app.services.audit_service import write_audit
 from app.services.device_inventory import apply_interface_snapshot, ensure_device_inventory
+from app.services.snmp_fallback import probe_interface_states
 from app.utils.device_context import set_selected_device
 from app.utils.driver_factory import get_driver
 
@@ -182,6 +183,13 @@ def action(device_id: int, action: str):
             except Exception:  # noqa: BLE001
                 synced_interfaces = 0
 
+            if synced_interfaces == 0:
+                setting = AppSetting.query.filter_by(section="controller", key="snmp_community").first()
+                community = (setting.value.strip() if setting and setting.value else "public")
+                snmp_rows = probe_interface_states(device.host, community=community, timeout=2)
+                if snmp_rows:
+                    synced_interfaces = apply_interface_snapshot(device, snmp_rows)
+
             created_ports, total_ports = ensure_device_inventory(device)
             device.status = "online"
             db.session.commit()
@@ -197,7 +205,21 @@ def action(device_id: int, action: str):
         finally:
             driver.close()
     elif action == "reconnect":
-        return redirect(url_for("devices.test_connection", device_id=device.id))
+        driver = get_driver(device)
+        try:
+            driver.connect()
+            device.status = "online"
+            db.session.commit()
+            flash("Reconnect erfolgreich.", "success")
+            write_audit(current_user.username, "device_reconnect", device.name, "Reconnect erfolgreich", "success")
+        except Exception as exc:  # noqa: BLE001
+            device.status = "offline"
+            db.session.commit()
+            flash(f"Reconnect fehlgeschlagen: {exc}", "error")
+            write_audit(current_user.username, "device_reconnect", device.name, "Reconnect fehlgeschlagen", "failed", str(exc))
+        finally:
+            driver.close()
+        return redirect(url_for("devices.detail", device_id=device.id))
     elif action == "remove":
         name = device.name
         db.session.delete(device)
