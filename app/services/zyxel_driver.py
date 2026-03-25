@@ -1,7 +1,25 @@
 from __future__ import annotations
 
+import re
+
 from .ssh_client import SSHClientService
 from .switch_driver_base import SwitchDriver
+
+
+def _parse_zyxel_interfaces(output: str) -> list[dict]:
+    rows: list[dict] = []
+    pattern = re.compile(r"^\s*(?P<port>\d{1,2})\s+.*?\b(?P<state>up|down|disabled|connect|connected|not-connect|notconnected)\b", re.IGNORECASE)
+    for line in output.splitlines():
+        match = pattern.search(line.strip())
+        if not match:
+            continue
+        state = match.group("state").lower()
+        rows.append({
+            "port_number": int(match.group("port")),
+            "link_state": "up" if state in {"up", "connect", "connected"} else "down",
+            "admin_enabled": state != "disabled",
+        })
+    return rows
 
 
 class ZyxelSSHDriver(SwitchDriver):
@@ -42,12 +60,19 @@ class ZyxelSSHDriver(SwitchDriver):
         return {"raw": output, "command": cmd}
 
     def get_interfaces(self) -> list[dict]:
+        try:
+            self.ssh.execute_command("terminal length 0")
+        except Exception:  # noqa: BLE001
+            pass
         cmd, output = self._first_success([
             "show interfaces status",
             "show interface status",
             "show interface port-status",
             "show interfaces",
         ])
+        parsed = _parse_zyxel_interfaces(output)
+        if parsed:
+            return parsed
         return [{"raw": output, "command": cmd}]
 
     def get_vlans(self) -> list[dict]:

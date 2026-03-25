@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from .ssh_client import SSHClientService
 from .switch_driver_base import SwitchDriver
 
@@ -40,8 +42,21 @@ class EdgeOSSSHDriver(SwitchDriver):
         return {"raw": self.ssh.execute_command(cmd), "command": cmd}
 
     def get_interfaces(self) -> list[dict]:
-        cmd = "show interfaces"
+        cmd = "show interfaces ethernet physical"
         output = self.ssh.execute_command(cmd)
+        rows: list[dict] = []
+        pattern = re.compile(r"^(eth(?P<idx>\d+)).*?(?P<link>up|down)", re.IGNORECASE)
+        for line in output.splitlines():
+            match = pattern.search(line.strip())
+            if not match:
+                continue
+            rows.append({
+                "port_number": int(match.group("idx")) + 1,
+                "link_state": match.group("link").lower(),
+                "admin_enabled": True,
+            })
+        if rows:
+            return rows
         return [{"raw": output, "command": cmd}]
 
     def get_vlans(self) -> list[dict]:

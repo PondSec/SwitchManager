@@ -122,17 +122,26 @@ def _extract_speed_duplex(line: str) -> tuple[str | None, str | None]:
 
 
 def parse_interface_rows(raw_output: str | list[dict]) -> list[dict]:
+    parsed: list[dict] = []
+    seen: set[int] = set()
+
     if isinstance(raw_output, list):
         lines = []
         for item in raw_output:
             if "port_number" in item:
-                lines.append(str(item))
+                port_number = int(item["port_number"])
+                if port_number not in seen:
+                    parsed.append({
+                        "port_number": port_number,
+                        "link_state": str(item.get("link_state", "down")),
+                        "admin_enabled": bool(item.get("admin_enabled", True)),
+                        "speed": item.get("speed"),
+                        "duplex": item.get("duplex"),
+                    })
+                    seen.add(port_number)
             lines.extend(str(item.get("raw", "")).splitlines())
     else:
         lines = str(raw_output or "").splitlines()
-
-    parsed: list[dict] = []
-    seen: set[int] = set()
 
     for line in lines:
         cleaned = line.strip()
