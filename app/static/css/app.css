@@ -450,7 +450,11 @@ input[type='radio'] { accent-color: var(--accent); }
 
 .ports-workspace { display: grid; gap: var(--space-5); }
 .ports-header { display: flex; align-items: flex-end; justify-content: space-between; flex-wrap: wrap; gap: var(--space-4); }
+.ports-header.unifi-like { border-bottom: 1px solid #213450; padding-bottom: var(--space-4); }
 .ports-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.ports-tabs { display: inline-flex; gap: 6px; border-radius: 10px; background: #0b1627; padding: 4px; border: 1px solid #29415f; width: fit-content; }
+.ports-tab { border: 0; color: #a8bbdb; background: transparent; border-radius: 8px; padding: 8px 14px; cursor: pointer; font-weight: 600; }
+.ports-tab.active { background: #102847; color: #73adff; }
 
 .ports-rack {
   display: grid;
@@ -463,33 +467,46 @@ input[type='radio'] { accent-color: var(--accent); }
 }
 .port-tile {
   position: relative;
-  min-height: 52px;
-  border-radius: 10px;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  min-height: 0;
+  padding: 0;
+  border-radius: 8px;
   border: 1px solid #3f5473;
   background: #7f8a9c;
   color: #0d1422;
   font-weight: 700;
+  font-size: .95rem;
   display: grid;
   place-items: center;
   cursor: pointer;
 }
+.port-tile span { line-height: 1; }
 .port-tile.active { background: #2dca7f; }
 .port-tile.disconnected { background: #8f99a9; }
 .port-tile.disabled { background: #4d5667; color: #edf2fc; }
 .port-tile.warning { background: #bacf45; }
 .port-tile.sfp { background: #2884c6; color: #ecf4ff; }
+.port-tile.ten-gbe { background: #91c4ff; color: #0d1422; }
 .port-tile.selected { outline: 2px solid #62acff; outline-offset: 2px; box-shadow: 0 0 0 4px rgba(98, 172, 255, .2); }
+
+.ports-filters { display: flex; flex-wrap: wrap; gap: 8px 14px; color: #bdd1ef; border-top: 1px solid #213551; padding-top: var(--space-3); }
+.ports-filters label { display: inline-flex; align-items: center; gap: 8px; font-size: .88rem; margin: 0; }
 
 .poe-icon,
 .device-icon {
   position: absolute;
   top: 4px;
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   stroke-width: 2.2;
 }
-.poe-icon { right: 4px; }
-.device-icon { left: 4px; }
+.poe-icon { right: 4px; color: #10263f; }
+.device-icon { left: 4px; color: #10263f; }
+.port-tile.sfp .poe-icon,
+.port-tile.sfp .device-icon,
+.port-tile.ten-gbe .poe-icon,
+.port-tile.ten-gbe .device-icon { color: #eaf3ff; }
 
 .ports-selected-line { font-size: .92rem; color: #d5e4fb; font-weight: 600; }
 .port-config-panel { max-width: 940px; width: 100%; display: grid; gap: var(--space-3); }
@@ -517,6 +534,12 @@ input[type='radio'] { accent-color: var(--accent); }
 .segmented label { padding: 6px 12px; border-radius: 999px; }
 .split-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
 .panel-footer { display: flex; justify-content: flex-end; gap: var(--space-2); padding-top: var(--space-4); border-top: 1px solid rgba(109, 140, 188, .24); }
+
+.ports-table-shell { border: 1px solid #233a5a; border-radius: 12px; overflow: hidden; }
+.ports-detail-table { margin: 0; width: 100%; }
+.ports-detail-table th { font-size: .8rem; color: #a8bfdf; }
+.activity-bar { height: 8px; background: #1b2d48; border-radius: 999px; overflow: hidden; min-width: 120px; }
+.activity-bar span { height: 100%; display: block; background: linear-gradient(90deg, #5c7ac1, #8ea2d7); }
 
 .network-layout { display: grid; gap: var(--space-5); grid-template-columns: minmax(240px, .36fr) minmax(0, 1fr); }
 .network-menu { display: grid; gap: 6px; align-content: start; }
