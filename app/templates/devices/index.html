@@ -42,7 +42,7 @@
     <p class="muted">{{ d.model }} · {{ d.host }}:{{ d.ssh_port }}</p>
     <div class="row wrap">
       <a class="btn btn-primary" href="{{ url_for('devices.detail', device_id=d.id) }}">Öffnen</a>
-      <form method="post" action="{{ url_for('devices.test_connection', device_id=d.id) }}">{{ csrf_token() }}<button class="btn btn-secondary">Verbindung testen</button></form>
+      <form method="post" action="{{ url_for('devices.test_connection', device_id=d.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-secondary">Verbindung testen</button></form>
       <a class="btn btn-secondary" href="{{ url_for('devices.edit', device_id=d.id) }}">Bearbeiten</a>
     </div>
   </article>
@@ -61,9 +61,9 @@
       <td>{{ d.last_seen_at.strftime('%Y-%m-%d %H:%M') if d.last_seen_at else '-' }}</td>
       <td class="row wrap">
         <a class="btn btn-primary" href="{{ url_for('devices.detail', device_id=d.id) }}">Details</a>
-        <form method="post" action="{{ url_for('devices.test_connection', device_id=d.id) }}">{{ csrf_token() }}<button class="btn btn-secondary">Test</button></form>
+        <form method="post" action="{{ url_for('devices.test_connection', device_id=d.id) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-secondary">Test</button></form>
         <a class="btn btn-secondary" href="{{ url_for('devices.edit', device_id=d.id) }}">Edit</a>
-        <form method="post" action="{{ url_for('devices.delete', device_id=d.id) }}" data-confirm="Gerät wirklich löschen?">{{ csrf_token() }}<button class="btn btn-danger">Delete</button></form>
+        <form method="post" action="{{ url_for('devices.delete', device_id=d.id) }}" data-confirm="Gerät wirklich löschen?"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-danger">Delete</button></form>
       </td>
     </tr>
     {% endfor %}

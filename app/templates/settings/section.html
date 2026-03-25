@@ -14,6 +14,12 @@
         <span>{{ field.label }}</span>
         {% if field.type == 'checkbox' %}
           <input type="checkbox" name="{{ field.key }}" {% if settings_map.get(field.key, '0') == '1' %}checked{% endif %}>
+        {% elif field.type == 'select' %}
+          <select class="input" name="{{ field.key }}">
+            {% for option in field.options %}
+              <option value="{{ option.value }}" {% if settings_map.get(field.key, '') == option.value %}selected{% endif %}>{{ option.label }}</option>
+            {% endfor %}
+          </select>
         {% else %}
           <input
             class="input"
