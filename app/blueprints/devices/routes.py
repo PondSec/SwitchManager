@@ -215,7 +215,21 @@ def edit(device_id: int):
     device = Device.query.get_or_404(device_id)
     form = DeviceForm(obj=device)
     if form.validate_on_submit():
-        form.populate_obj(device)
+        device.name = form.name.data
+        device.host = form.host.data
+        device.ssh_port = form.ssh_port.data
+        device.username = form.username.data
+        device.driver_type = form.driver_type.data
+        device.model = form.model.data or device.model or "Unbekannt"
+
+        # Passwort nur überschreiben, wenn explizit neu gesetzt.
+        if (form.password.data or "").strip():
+            device.password = form.password.data
+
+        # Key-Pfad nur ändern, wenn ein Wert eingegeben wurde.
+        if form.key_path.data is not None and (form.key_path.data or "").strip():
+            device.key_path = form.key_path.data.strip()
+
         device.key_path = (device.key_path or "").strip() or None
         ensure_device_inventory(device, form.inventory_port_count.data)
         db.session.commit()

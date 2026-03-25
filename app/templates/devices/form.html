@@ -9,7 +9,7 @@
     <label>{{ form.host.label }}{{ form.host(class_='input') }}</label>
     <label>{{ form.ssh_port.label }}{{ form.ssh_port(class_='input') }}</label>
     <label>{{ form.username.label }}{{ form.username(class_='input') }}</label>
-    <label>{{ form.password.label }}{{ form.password(class_='input') }}</label>
+    <label>{{ form.password.label }}{{ form.password(class_='input') }}<small class='muted'>Beim Bearbeiten leer lassen, um das bestehende Passwort beizubehalten.</small></label>
     <label>{{ form.key_path.label }}{{ form.key_path(class_='input') }}</label>
     <label>{{ form.model.label }}{{ form.model(class_='input', placeholder='z.B. GS1900-24E oder EdgeRouter X') }}</label>
     <label>{{ form.inventory_port_count.label }}{{ form.inventory_port_count(class_='input', placeholder='automatisch wenn leer') }}</label>
